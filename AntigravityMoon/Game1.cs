@@ -61,6 +61,7 @@ namespace AntigravityMoon
             LoadTexture("workbench");
             LoadTexture("corn");
             LoadTexture("spaceship");
+            LoadTexture("metro_alien");
             _spaceshipTexture = _textures["spaceship"];
             _spaceshipPosition = new Vector2(400, -100); // Start off screen
         }
@@ -115,6 +116,11 @@ namespace AntigravityMoon
         private float _introTimer = 0f;
         private Vector2 _spaceshipPosition;
         private Texture2D _spaceshipTexture;
+        
+        // Alien Logic
+        private List<Alien> _aliens = new List<Alien>();
+        private float _alienSpawnTimer = 0f;
+        private bool _alienSpawned = false;
 
         private Vector2 GetInventoryPosition()
         {
@@ -379,6 +385,29 @@ namespace AntigravityMoon
                     _respawnTimer = 0f;
                     SpawnRandomEntity();
                 }
+
+                // Alien Spawning Logic (Spawn after 30s)
+                if (!_alienSpawned)
+                {
+                    _alienSpawnTimer += dt;
+                    if (_alienSpawnTimer >= 30f)
+                    {
+                        _alienSpawned = true;
+                        // Spawn Alien at random position away from player
+                        Vector2 spawnPos = _player.Position + new Vector2(400, 0); // 400px to the right
+                        _aliens.Add(new Alien(spawnPos));
+                    }
+                }
+
+                // Update Aliens
+                for (int i = _aliens.Count - 1; i >= 0; i--)
+                {
+                    _aliens[i].Update(dt, _player);
+                    if (_aliens[i].IsDead)
+                    {
+                        _aliens.RemoveAt(i);
+                    }
+                }
             }
 
 
@@ -573,6 +602,12 @@ namespace AntigravityMoon
                 
                 _entityManager.Draw(_spriteBatch, _textures, mouseWorldPos);
                 
+                // Draw Aliens
+                foreach (var alien in _aliens)
+                {
+                    alien.Draw(_spriteBatch, _textures.ContainsKey("metro_alien") ? _textures["metro_alien"] : _pixelTexture, mouseWorldPos);
+                }
+
                 _player.Draw(_spriteBatch, _textures.ContainsKey("astronaut") ? _textures["astronaut"] : _pixelTexture, _textures);
             }
 

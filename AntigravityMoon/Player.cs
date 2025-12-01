@@ -321,6 +321,16 @@ namespace AntigravityMoon
             Oxygen = 100f;
         }
 
+        public void TakeDamage(float amount)
+        {
+            Health -= amount;
+            if (Health <= 0)
+            {
+                Health = 0;
+                Die();
+            }
+        }
+
         private void Respawn()
         {
             Position = _spawnPoint;
