@@ -67,7 +67,7 @@ namespace AntigravityMoon
         public override void Draw(SpriteBatch spriteBatch, Texture2D texture, Vector2 mouseWorldPos)
         {
             // Draw alien wider - 64x32
-            Rectangle bounds = new Rectangle((int)Position.X, (int)Position.Y, 64, 32);
+            Rectangle bounds = new Rectangle((int)Position.X, (int)Position.Y, 128, 64);
             spriteBatch.Draw(texture, bounds, Color.White);
             
             // Draw Label only if hovering

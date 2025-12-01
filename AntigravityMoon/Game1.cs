@@ -121,6 +121,9 @@ namespace AntigravityMoon
         private List<Alien> _aliens = new List<Alien>();
         private float _alienSpawnTimer = 0f;
         private bool _alienSpawned = false;
+        
+        // Death Screen
+        private bool _showDeathScreen = false;
 
         private Vector2 GetInventoryPosition()
         {
@@ -179,6 +182,36 @@ namespace AntigravityMoon
             }
             else if (_currentGameState == GameState.Playing)
             {
+            // Check for player death
+            if (_player.IsDead && !_showDeathScreen)
+            {
+                _showDeathScreen = true;
+            }
+
+            // Handle Death Screen Input
+            if (_showDeathScreen)
+            {
+                if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
+                {
+                    // Respawn button: 960-150, 540+50, 300, 60
+                    Rectangle respawnBtn = new Rectangle(960 - 150, 540 + 50, 300, 60);
+                    if (respawnBtn.Contains(currentMouseState.Position))
+                    {
+                        _showDeathScreen = false;
+                        _player.DoRespawn();
+                        // Reset game state for respawn
+                        _alienSpawned = false;
+                        _alienSpawnTimer = 0f;
+                        _aliens.Clear();
+                  }
+                }
+                // Skip normal game logic while death screen is showing
+                _prevKeyboardState = currentKeyboardState;
+                _prevMouseState = currentMouseState;
+                base.Update(gameTime);
+                return;
+            }
+
             if (currentKeyboardState.IsKeyDown(Keys.I) && !_prevKeyboardState.IsKeyDown(Keys.I))
             {
                 _showInventory = !_showInventory;
@@ -806,6 +839,37 @@ namespace AntigravityMoon
             {
                 _spriteBatch.Draw(_pixelTexture, new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, 60, 25), Color.White);
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "EAT", new Vector2(_contextMenuPos.X + 5, _contextMenuPos.Y + 5), Color.Black, 2);
+            }
+
+            // Draw Death Screen
+            if (_showDeathScreen)
+            {
+                // Dark overlay
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(0, 0, 1920, 1080), Color.Black * 0.8f);
+                
+                // Death message
+                string deathMessage = "YOU DIED";
+                string causeMessage = "";
+                switch (_player.LastDeathCause)
+                {
+                    case DeathCause.Oxygen:
+                        causeMessage = "OXYGEN DEPLETED";
+                        break;
+                    case DeathCause.Hunger:
+                        causeMessage = "STARVED TO DEATH";
+                        break;
+                    case DeathCause.Alien:
+                        causeMessage = "KILLED BY METRO ALIEN";
+                        break;
+                }
+                
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, deathMessage, new Vector2(960 - 200, 400), Color.Red, 6);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, causeMessage, new Vector2(960 - 300, 500), Color.White, 3);
+                
+                // Respawn button
+                Rectangle respawnBtn = new Rectangle(960 - 150, 540 + 50, 300, 60);
+                _spriteBatch.Draw(_pixelTexture, respawnBtn, Color.Green);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "RESPAWN", new Vector2(respawnBtn.X + 50, respawnBtn.Y + 20), Color.Black, 3);
             }
 
             _spriteBatch.End();

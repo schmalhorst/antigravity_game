@@ -6,6 +6,14 @@ using System.Collections.Generic;
 
 namespace AntigravityMoon
 {
+    public enum DeathCause
+    {
+        None,
+        Oxygen,
+        Hunger,
+        Alien
+    }
+
     public class Player
     {
         public Vector2 Position { get; set; }
@@ -24,6 +32,8 @@ namespace AntigravityMoon
         public float Hunger { get; private set; } = 100f;
         public float Health { get; private set; } = 100f;
         public float Oxygen { get; private set; } = 100f;
+        public DeathCause LastDeathCause { get; private set; } = DeathCause.None;
+        public bool IsDead { get; private set; } = false;
         private float _hungerDecayRate = 1.0f; // Per second
         private float _oxygenDecayRate = 2.0f; // Per second (50s supply)
         private Vector2 _spawnPoint;
@@ -91,6 +101,7 @@ namespace AntigravityMoon
                 if (Hunger <= 0)
                 {
                     Hunger = 0;
+                    LastDeathCause = DeathCause.Hunger;
                     Die();
                 }
 
@@ -167,6 +178,7 @@ namespace AntigravityMoon
             if (Oxygen <= 0)
             {
                 Oxygen = 0;
+                LastDeathCause = DeathCause.Oxygen;
                 Die();
             }
         }
@@ -313,7 +325,13 @@ namespace AntigravityMoon
 
         private void Die()
         {
+            IsDead = true;
+        }
+
+        public void DoRespawn()
+        {
             Respawn();
+            IsDead = false;
         }
 
         public void RefillOxygen()
@@ -327,6 +345,7 @@ namespace AntigravityMoon
             if (Health <= 0)
             {
                 Health = 0;
+                LastDeathCause = DeathCause.Alien;
                 Die();
             }
         }
@@ -338,6 +357,7 @@ namespace AntigravityMoon
             Hunger = 100f;
             Health = 100f;
             Oxygen = 100f;
+            LastDeathCause = DeathCause.None;
         }
     }
 }
