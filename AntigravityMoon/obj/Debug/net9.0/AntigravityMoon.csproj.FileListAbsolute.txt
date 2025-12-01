@@ -31,3 +31,4 @@
 /Users/johnschmalhorst/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.pdb
 /Users/johnschmalhorst/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.genruntimeconfig.cache
 /Users/johnschmalhorst/antigravity_game/AntigravityMoon/obj/Debug/net9.0/ref/AntigravityMoon.dll
+/Users/johnschmalhorst/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.sourcelink.json

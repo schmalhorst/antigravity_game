@@ -33,7 +33,7 @@ namespace AntigravityMoon
             _camera = new Camera(GraphicsDevice.Viewport);
             _tileMap = new TileMap(25, 19); // Fits 800x600 roughly with 32px tiles
             _entityManager = new EntityManager();
-            _player = new Player(new Vector2(100, 100));
+            _player = new Player(new Vector2(400, 304));
 
             // Add some test entities
             _entityManager.AddEntity(new Entity(new Vector2(300, 300), "Rock", true, true, true)); // Rock is harvestable and solid

@@ -23,9 +23,11 @@ namespace AntigravityMoon
 
         public float Hunger { get; private set; } = 100f;
         private float _hungerDecayRate = 1.0f; // Per second (approx 100s to starve)
+        private Vector2 _spawnPoint;
 
         public Player(Vector2 startPosition)
         {
+            _spawnPoint = startPosition;
             Position = startPosition;
             Inventory = new Inventory();
         }
@@ -82,7 +84,11 @@ namespace AntigravityMoon
             {
                 // Hunger Decay (Only when moving)
                 Hunger -= _hungerDecayRate * dt;
-                if (Hunger < 0) Hunger = 0;
+                if (Hunger <= 0)
+                {
+                    Hunger = 0;
+                    Die();
+                }
 
                 movement.Normalize();
                 Vector2 nextPos = Position + movement * _speed * dt;
@@ -275,6 +281,18 @@ namespace AntigravityMoon
         {
             Hunger += amount;
             if (Hunger > 100f) Hunger = 100f;
+        }
+
+        private void Die()
+        {
+            Respawn();
+        }
+
+        private void Respawn()
+        {
+            Position = _spawnPoint;
+            Inventory.Clear();
+            Hunger = 100f;
         }
     }
 }

@@ -123,6 +123,18 @@ namespace AntigravityMoon
             return true;
         }
 
+        public void Clear()
+        {
+            for (int y = 0; y < Rows; y++)
+            {
+                for (int x = 0; x < Cols; x++)
+                {
+                    _items[x, y].ItemName = null;
+                    _items[x, y].Count = 0;
+                }
+            }
+        }
+
         public void Draw(SpriteBatch spriteBatch, Texture2D pixelTexture, Dictionary<string, Texture2D> itemTextures, Vector2 position)
         {
             int cellSize = 40;
