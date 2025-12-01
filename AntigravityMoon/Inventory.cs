@@ -7,9 +7,10 @@ namespace AntigravityMoon
 {
     public class Inventory
     {
-        public const int Rows = 8;
-        public const int Cols = 8;
+        public int Rows { get; private set; } = 1;
+        public int Cols { get; private set; } = 4;
         public const int MaxStack = 10;
+        public int UpgradeLevel { get; private set; } = 0;
 
         public struct InventorySlot
         {
@@ -22,6 +23,46 @@ namespace AntigravityMoon
         public Inventory()
         {
             _items = new InventorySlot[Cols, Rows];
+        }
+
+        public bool Upgrade()
+        {
+            if (UpgradeLevel == 0)
+            {
+                // Upgrade to 8 cols, 1 row
+                UpgradeLevel++;
+                Resize(8, 1);
+                return true;
+            }
+            else if (UpgradeLevel == 1)
+            {
+                // Upgrade to 8 cols, 2 rows
+                UpgradeLevel++;
+                Resize(8, 2);
+                return true;
+            }
+            return false;
+        }
+
+        private void Resize(int newCols, int newRows)
+        {
+            var newItems = new InventorySlot[newCols, newRows];
+            
+            // Copy existing items
+            for (int y = 0; y < Rows; y++)
+            {
+                for (int x = 0; x < Cols; x++)
+                {
+                    if (x < newCols && y < newRows)
+                    {
+                        newItems[x, y] = _items[x, y];
+                    }
+                }
+            }
+
+            _items = newItems;
+            Cols = newCols;
+            Rows = newRows;
         }
 
         public bool AddItem(string itemName)

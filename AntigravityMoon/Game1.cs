@@ -214,12 +214,20 @@ namespace AntigravityMoon
 
                     if (_showWorkbenchMenu)
                     {
-                        // Upgrade Button (Rect: 300, 200, 200, 50)
+                        // Upgrade Backpack Button (Rect: 300, 200, 200, 50)
                         if (new Rectangle(300, 200, 200, 50).Contains(mousePos))
                         {
-                            // Upgrade Laser (TODO: Implement actual upgrade logic)
-                            // For now just close menu
-                            _showWorkbenchMenu = false;
+                            int cost = 0;
+                            if (_player.Inventory.UpgradeLevel == 0) cost = 10;
+                            else if (_player.Inventory.UpgradeLevel == 1) cost = 20;
+
+                            if (cost > 0 && _player.Inventory.CountItem("Crystal") >= cost)
+                            {
+                                if (_player.Inventory.RemoveItems("Crystal", cost))
+                                {
+                                    _player.Inventory.Upgrade();
+                                }
+                            }
                         }
                     }
                     else if (_showGreenhouseMenu)
@@ -511,9 +519,34 @@ namespace AntigravityMoon
                 // Title
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "WORKBENCH", new Vector2(260, 160), Color.White, 2);
 
-                // Upgrade Button
-                _spriteBatch.Draw(_pixelTexture, new Rectangle(300, 200, 200, 50), Color.Blue);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "UPGRADE LASER", new Vector2(310, 215), Color.White, 2);
+                // Upgrade Backpack Button
+                int cost = 0;
+                string costText = "";
+                bool canUpgrade = false;
+
+                if (_player.Inventory.UpgradeLevel == 0)
+                {
+                    cost = 10;
+                    costText = "10 CRYSTAL";
+                    canUpgrade = _player.Inventory.CountItem("Crystal") >= cost;
+                }
+                else if (_player.Inventory.UpgradeLevel == 1)
+                {
+                    cost = 20;
+                    costText = "20 CRYSTAL";
+                    canUpgrade = _player.Inventory.CountItem("Crystal") >= cost;
+                }
+
+                if (_player.Inventory.UpgradeLevel < 2)
+                {
+                    _spriteBatch.Draw(_pixelTexture, new Rectangle(300, 200, 200, 50), canUpgrade ? Color.Blue : Color.Gray);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "UPGRADE BAG", new Vector2(310, 215), Color.White, 2);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, costText, new Vector2(310, 235), canUpgrade ? Color.White : Color.Red, 1);
+                }
+                else
+                {
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "MAX LEVEL", new Vector2(310, 215), Color.Gold, 2);
+                }
             }
             else if (_showGreenhouseMenu)
             {
