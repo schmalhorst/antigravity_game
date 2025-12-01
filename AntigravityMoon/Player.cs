@@ -44,6 +44,7 @@ namespace AntigravityMoon
             IsPlacing = true;
             _structureToPlace = structureType;
             _heldEntity = null;
+            _prevBuildKeyPressed = true; // Prevent immediate placement from menu click
         }
 
         public void StartMoving(Structure structure)
