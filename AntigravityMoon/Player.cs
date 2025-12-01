@@ -8,7 +8,7 @@ namespace AntigravityMoon
 {
     public class Player
     {
-        public Vector2 Position { get; private set; }
+        public Vector2 Position { get; set; }
         public Inventory Inventory { get; private set; }
         private float _speed = 200f;
         private Entity _heldEntity; // For antigravity tool
@@ -22,7 +22,10 @@ namespace AntigravityMoon
         private MouseState _prevMouseState;
 
         public float Hunger { get; private set; } = 100f;
-        private float _hungerDecayRate = 1.0f; // Per second (approx 100s to starve)
+        public float Health { get; private set; } = 100f;
+        public float Oxygen { get; private set; } = 100f;
+        private float _hungerDecayRate = 1.0f; // Per second
+        private float _oxygenDecayRate = 2.0f; // Per second (50s supply)
         private Vector2 _spawnPoint;
 
         public Player(Vector2 startPosition)
@@ -91,6 +94,22 @@ namespace AntigravityMoon
                     Die();
                 }
 
+                // Oxygen Decay (Always, or maybe just when moving? Let's do always for now, but inside Update loop it's only when moving... wait. 
+                // Original code had hunger decay inside "if (movement != Vector2.Zero)". 
+                // Oxygen should probably decay always. Let's move it outside the movement check.
+                // But for now, to minimize diff, let's keep it here or move it.
+                // The prompt says "Modify Player.cs to add Oxygen property and decay".
+                // I should probably move both out, but let's stick to the pattern. 
+                // Actually, oxygen should decay even if standing still.
+                // I will move it outside the movement check in a separate edit if needed, or just add it here for now if that's the pattern.
+                // The current code structure has hunger decay inside the movement check.
+                // Let's look at the file content again.
+                // Lines 84: if (movement != Vector2.Zero)
+                // Lines 86-92: Hunger decay.
+                // I should probably move hunger decay out too, but I shouldn't change existing behavior unless asked.
+                // However, oxygen definitely decays always.
+                // So I will add Oxygen decay outside the movement check.
+                
                 movement.Normalize();
                 Vector2 nextPos = Position + movement * _speed * dt;
                 
@@ -142,6 +161,14 @@ namespace AntigravityMoon
             }
             
             _prevMouseState = mstate;
+
+            // Oxygen Decay (Always)
+            Oxygen -= _oxygenDecayRate * dt;
+            if (Oxygen <= 0)
+            {
+                Oxygen = 0;
+                Die();
+            }
         }
 
         private void HandlePlacement(MouseState mstate, EntityManager entityManager, Vector2 mousePos)
@@ -289,11 +316,18 @@ namespace AntigravityMoon
             Respawn();
         }
 
+        public void RefillOxygen()
+        {
+            Oxygen = 100f;
+        }
+
         private void Respawn()
         {
             Position = _spawnPoint;
             Inventory.Clear();
             Hunger = 100f;
+            Health = 100f;
+            Oxygen = 100f;
         }
     }
 }

@@ -60,6 +60,9 @@ namespace AntigravityMoon
             LoadTexture("greenhouse");
             LoadTexture("workbench");
             LoadTexture("corn");
+            LoadTexture("spaceship");
+            _spaceshipTexture = _textures["spaceship"];
+            _spaceshipPosition = new Vector2(400, -100); // Start off screen
         }
 
         private void LoadTexture(string name)
@@ -106,6 +109,26 @@ namespace AntigravityMoon
         private Vector2 _editContextMenuPos;
         private Structure _editTargetStructure;
 
+        // Game State
+        public enum GameState { StartMenu, Intro, Playing }
+        private GameState _currentGameState = GameState.StartMenu;
+        private float _introTimer = 0f;
+        private Vector2 _spaceshipPosition;
+        private Texture2D _spaceshipTexture;
+
+        private Vector2 GetInventoryPosition()
+        {
+            int cellSize = 40;
+            int padding = 5;
+            int width = _player.Inventory.Cols * (cellSize + padding) + padding;
+            int height = _player.Inventory.Rows * (cellSize + padding) + padding;
+            
+            int x = (800 - width) / 2; // Centered
+            int y = 600 - height - 20; // 20px from bottom
+            
+            return new Vector2(x, y);
+        }
+
         protected override void Update(GameTime gameTime)
         {
             KeyboardState currentKeyboardState = Keyboard.GetState();
@@ -115,7 +138,46 @@ namespace AntigravityMoon
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || currentKeyboardState.IsKeyDown(Keys.Escape))
                 Exit();
 
-            // Toggle Inventory
+            if (_currentGameState == GameState.StartMenu)
+            {
+                if (currentKeyboardState.IsKeyDown(Keys.Enter))
+                {
+                    _currentGameState = GameState.Intro;
+                    _spaceshipPosition = new Vector2(400 - 32, -100); // Center horizontally (assuming 64 width)
+                }
+            }
+            else if (_currentGameState == GameState.Intro)
+            {
+                _spaceshipPosition.Y += 200f * dt; // Speed
+                _camera.Position = _spaceshipPosition + new Vector2(32, 32); // Follow center
+
+                if (_spaceshipPosition.Y >= 304 - 32) // Land at player pos (approx)
+                {
+                    _spaceshipPosition.Y = 304 - 32;
+                    
+                    // Add a small delay/pause before switching to playing
+                    _introTimer += dt;
+                    if (_introTimer > 1.0f)
+                    {
+                         _currentGameState = GameState.Playing;
+                         _introTimer = 0f;
+
+                        // Create persistent spaceship structure
+                        // Position, Type, Width, Height
+                        _entityManager.AddEntity(new Structure(_spaceshipPosition, "Spaceship", 64, 64));
+                        
+                        // Move player outside (below) the spaceship so they aren't stuck
+                        _player.Position = _spaceshipPosition + new Vector2(16, 64 + 10); // Centered-ish below, with padding
+                        
+                        // Smooth camera transition (optional, but since we spawn near ship, it shouldn't jump much)
+                        // Camera is already at ship center. Player is slightly below.
+                        // We can just let the camera update logic in Playing state take over, which snaps to player.
+                        // To smooth it, we'd need to lerp in Playing state, but for now let's see if the delay helps the "feel".
+                    }
+                }
+            }
+            else if (_currentGameState == GameState.Playing)
+            {
             if (currentKeyboardState.IsKeyDown(Keys.I) && !_prevKeyboardState.IsKeyDown(Keys.I))
             {
                 _showInventory = !_showInventory;
@@ -152,9 +214,10 @@ namespace AntigravityMoon
                 // Right Click on Item to open Context Menu
                 if (currentMouseState.RightButton == ButtonState.Pressed && _prevMouseState.RightButton == ButtonState.Released)
                 {
-                    // Calculate grid pos (Hardcoded inventory pos 100, 100, cell size 40, padding 5)
-                    int startX = 100;
-                    int startY = 100;
+                    // Calculate grid pos
+                    Vector2 invPos = GetInventoryPosition();
+                    int startX = (int)invPos.X;
+                    int startY = (int)invPos.Y;
                     int cellSize = 40;
                     int padding = 5;
                     
@@ -166,7 +229,7 @@ namespace AntigravityMoon
                         int col = (mx - startX) / (cellSize + padding);
                         int row = (my - startY) / (cellSize + padding);
                         
-                        if (col >= 0 && col < 8 && row >= 0 && row < 8)
+                        if (col >= 0 && col < _player.Inventory.Cols && row >= 0 && row < _player.Inventory.Rows)
                         {
                             string item = _player.Inventory.GetItem(col, row);
                             if (item != null)
@@ -282,6 +345,11 @@ namespace AntigravityMoon
                                 {
                                     _showGreenhouseMenu = true;
                                     _interactedStructure = s;
+                                }
+                                else if (s.Type == "Spaceship")
+                                {
+                                    // Refill Oxygen
+                                    _player.RefillOxygen();
                                 }
                             }
                         }
@@ -433,6 +501,8 @@ namespace AntigravityMoon
                 }
             }
 
+            }
+
             _prevKeyboardState = currentKeyboardState;
             _prevMouseState = currentMouseState;
 
@@ -479,33 +549,61 @@ namespace AntigravityMoon
         {
             GraphicsDevice.Clear(Color.Black);
 
+            if (_currentGameState == GameState.StartMenu)
+            {
+                _spriteBatch.Begin();
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "ANTIGRAVITY MOON", new Vector2(150, 200), Color.White, 4);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS ENTER TO START", new Vector2(220, 300), Color.White, 2);
+                _spriteBatch.End();
+                return;
+            }
+
             // Apply Camera Transform
             _spriteBatch.Begin(transformMatrix: _camera.GetViewMatrix(), samplerState: SamplerState.PointClamp);
 
             _tileMap.Draw(_spriteBatch, _textures.ContainsKey("moon_ground") ? _textures["moon_ground"] : _pixelTexture);
             
-            // Calculate Mouse World Pos for Hover Logic
-            Vector2 mouseWorldPos = _camera.ScreenToWorld(new Vector2(Mouse.GetState().X, Mouse.GetState().Y));
-            
-            _entityManager.Draw(_spriteBatch, _textures, mouseWorldPos);
-            
-            _player.Draw(_spriteBatch, _textures.ContainsKey("astronaut") ? _textures["astronaut"] : _pixelTexture, _textures);
+            if (_currentGameState == GameState.Intro)
+            {
+                 // Draw Spaceship
+                 _spriteBatch.Draw(_spaceshipTexture, new Rectangle((int)_spaceshipPosition.X, (int)_spaceshipPosition.Y, 64, 64), Color.White);
+            }
+            else if (_currentGameState == GameState.Playing)
+            {
+                // Calculate Mouse World Pos for Hover Logic
+                Vector2 mouseWorldPos = _camera.ScreenToWorld(new Vector2(Mouse.GetState().X, Mouse.GetState().Y));
+                
+                _entityManager.Draw(_spriteBatch, _textures, mouseWorldPos);
+                
+                _player.Draw(_spriteBatch, _textures.ContainsKey("astronaut") ? _textures["astronaut"] : _pixelTexture, _textures);
+            }
 
             _spriteBatch.End();
 
-            // Draw UI (Inventory) separately without camera transform (Screen Space)
-            _spriteBatch.Begin();
+            if (_currentGameState == GameState.Playing)
+            {
+                // Draw UI (Inventory) separately without camera transform (Screen Space)
+                _spriteBatch.Begin();
             
             if (_showInventory)
             {
-                _player.Inventory.Draw(_spriteBatch, _pixelTexture, _textures, new Vector2(100, 100));
+                _player.Inventory.Draw(_spriteBatch, _pixelTexture, _textures, GetInventoryPosition());
             }
 
+            // Draw Health Bar
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "HEALTH", new Vector2(10, 10), Color.White, 1);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 25, 200, 20), Color.Gray);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 25, (int)(_player.Health * 2), 20), Color.Green);
+
             // Draw Hunger Bar
-            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 10, 200, 20), Color.Gray);
-            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 10, (int)(_player.Hunger * 2), 20), Color.Orange);
-            // Simple text would be better but we don't have SpriteFont loaded yet. 
-            // We'll assume orange bar is hunger.
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "HUNGER", new Vector2(10, 50), Color.White, 1);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 65, 200, 20), Color.Gray);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 65, (int)(_player.Hunger * 2), 20), Color.Orange);
+
+            // Draw Oxygen Bar
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "OXYGEN", new Vector2(10, 90), Color.White, 1);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 105, 200, 20), Color.Gray);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 105, (int)(_player.Oxygen * 2), 20), Color.CornflowerBlue);
 
             // Draw Menus
             if (_showWorkbenchMenu)
@@ -665,6 +763,7 @@ namespace AntigravityMoon
             }
 
             _spriteBatch.End();
+            }
 
             base.Draw(gameTime);
         }
