@@ -6,7 +6,7 @@ namespace AntigravityMoon
 {
     public class TileMap
     {
-        public const int TileSize = 32;
+        public const int TileSize = 48;
         public int Width { get; private set; }
         public int Height { get; private set; }
         private int[,] _tiles;

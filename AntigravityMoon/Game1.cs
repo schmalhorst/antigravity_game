@@ -21,8 +21,8 @@ namespace AntigravityMoon
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
-            _graphics.PreferredBackBufferWidth = 800;
-            _graphics.PreferredBackBufferHeight = 600;
+            _graphics.PreferredBackBufferWidth = 1920;
+            _graphics.PreferredBackBufferHeight = 1080;
             _graphics.ApplyChanges();
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
@@ -31,7 +31,7 @@ namespace AntigravityMoon
         protected override void Initialize()
         {
             _camera = new Camera(GraphicsDevice.Viewport);
-            _tileMap = new TileMap(25, 19); // Fits 800x600 roughly with 32px tiles
+            _tileMap = new TileMap(60, 34); // Fits 1920x1080 roughly with 32px tiles
             _entityManager = new EntityManager();
             _player = new Player(new Vector2(400, 304));
 
@@ -123,8 +123,8 @@ namespace AntigravityMoon
             int width = _player.Inventory.Cols * (cellSize + padding) + padding;
             int height = _player.Inventory.Rows * (cellSize + padding) + padding;
             
-            int x = (800 - width) / 2; // Centered
-            int y = 600 - height - 20; // 20px from bottom
+            int x = (1920 - width) / 2; // Centered
+            int y = 1080 - height - 20; // 20px from bottom
             
             return new Vector2(x, y);
         }
@@ -151,9 +151,9 @@ namespace AntigravityMoon
                 _spaceshipPosition.Y += 200f * dt; // Speed
                 _camera.Position = _spaceshipPosition + new Vector2(32, 32); // Follow center
 
-                if (_spaceshipPosition.Y >= 304 - 32) // Land at player pos (approx)
+                if (_spaceshipPosition.Y >= 200) // Land higher (Y=200)
                 {
-                    _spaceshipPosition.Y = 304 - 32;
+                    _spaceshipPosition.Y = 200;
                     
                     // Add a small delay/pause before switching to playing
                     _introTimer += dt;
@@ -166,13 +166,8 @@ namespace AntigravityMoon
                         // Position, Type, Width, Height
                         _entityManager.AddEntity(new Structure(_spaceshipPosition, "Spaceship", 64, 64));
                         
-                        // Move player outside (below) the spaceship so they aren't stuck
-                        _player.Position = _spaceshipPosition + new Vector2(16, 64 + 10); // Centered-ish below, with padding
-                        
-                        // Smooth camera transition (optional, but since we spawn near ship, it shouldn't jump much)
-                        // Camera is already at ship center. Player is slightly below.
-                        // We can just let the camera update logic in Playing state take over, which snaps to player.
-                        // To smooth it, we'd need to lerp in Playing state, but for now let's see if the delay helps the "feel".
+                        // Ensure player is at spawn point (304) which is below the ship (200+64=264)
+                        _player.Position = new Vector2(400, 304);
                     }
                 }
             }
@@ -266,8 +261,11 @@ namespace AntigravityMoon
                     // Check UI bounds (Hardcoded for now)
                     Vector2 mousePos = new Vector2(currentMouseState.X, currentMouseState.Y);
                     
-                    // Close Button (Top Right of Menu: 510, 160, 30, 30)
-                    if (new Rectangle(510, 160, 30, 30).Contains(mousePos))
+                    // Menu Rect: 960-300=660, 540-200=340. Size 600x400.
+                    Rectangle menuRect = new Rectangle(660, 340, 600, 400);
+
+                    // Close Button (Right - 40, Top + 10) -> (660+600-40, 340+10) = (1220, 350, 30, 30)
+                    if (new Rectangle(menuRect.Right - 40, menuRect.Top + 10, 30, 30).Contains(mousePos))
                     {
                         _showWorkbenchMenu = false;
                         _showGreenhouseMenu = false;
@@ -277,8 +275,8 @@ namespace AntigravityMoon
 
                     if (_showWorkbenchMenu)
                     {
-                        // Upgrade Backpack Button (Rect: 300, 200, 200, 50)
-                        if (new Rectangle(300, 200, 200, 50).Contains(mousePos))
+                        // Upgrade Backpack Button (Rect: X+50, Y+100, 300, 60) -> (710, 440, 300, 60)
+                        if (new Rectangle(menuRect.X + 50, menuRect.Top + 100, 300, 60).Contains(mousePos))
                         {
                             int cost = 0;
                             if (_player.Inventory.UpgradeLevel == 0) cost = 10;
@@ -295,8 +293,8 @@ namespace AntigravityMoon
                     }
                     else if (_showGreenhouseMenu)
                     {
-                        // Plant Corn Button (Rect: 300, 200, 200, 50)
-                        if (new Rectangle(300, 200, 200, 50).Contains(mousePos))
+                        // Plant Corn Button (Rect: X+50, Y+100, 300, 60) -> (710, 440, 300, 60)
+                        if (new Rectangle(menuRect.X + 50, menuRect.Top + 100, 300, 60).Contains(mousePos))
                         {
                             if (_interactedStructure != null && !_interactedStructure.IsGrowing && !_interactedStructure.IsReadyToHarvest)
                             {
@@ -306,8 +304,8 @@ namespace AntigravityMoon
                                 }
                             }
                         }
-                        // Harvest Button (Rect: 300, 260, 200, 50)
-                        if (new Rectangle(300, 260, 200, 50).Contains(mousePos))
+                        // Harvest Button (Rect: X+50, Y+200, 300, 60) -> (710, 540, 300, 60)
+                        if (new Rectangle(menuRect.X + 50, menuRect.Top + 200, 300, 60).Contains(mousePos))
                         {
                              if (_interactedStructure != null && _interactedStructure.IsReadyToHarvest)
                              {
@@ -405,7 +403,7 @@ namespace AntigravityMoon
                         int menuWidth = 60;
                         int menuHeight = 6 * 50 + 7 * 5;
                         int menuX = 10;
-                        int menuY = (600 - menuHeight) / 2;
+                        int menuY = (1080 - menuHeight) / 2;
                         
                         // Check Slots
                         for (int i = 0; i < 6; i++)
@@ -552,8 +550,8 @@ namespace AntigravityMoon
             if (_currentGameState == GameState.StartMenu)
             {
                 _spriteBatch.Begin();
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "ANTIGRAVITY MOON", new Vector2(150, 200), Color.White, 4);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS ENTER TO START", new Vector2(220, 300), Color.White, 2);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "ANTIGRAVITY MOON", new Vector2(400, 400), Color.White, 8);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS ENTER TO START", new Vector2(550, 600), Color.White, 4);
                 _spriteBatch.End();
                 return;
             }
@@ -591,31 +589,39 @@ namespace AntigravityMoon
             }
 
             // Draw Health Bar
-            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "HEALTH", new Vector2(10, 10), Color.White, 1);
-            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 25, 200, 20), Color.Gray);
-            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 25, (int)(_player.Health * 2), 20), Color.Green);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "HEALTH", new Vector2(20, 20), Color.White, 2);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 50, 400, 40), Color.Gray);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 50, (int)(_player.Health * 4), 40), Color.Green);
 
             // Draw Hunger Bar
-            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "HUNGER", new Vector2(10, 50), Color.White, 1);
-            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 65, 200, 20), Color.Gray);
-            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 65, (int)(_player.Hunger * 2), 20), Color.Orange);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "HUNGER", new Vector2(20, 100), Color.White, 2);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 130, 400, 40), Color.Gray);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 130, (int)(_player.Hunger * 4), 40), Color.Orange);
 
             // Draw Oxygen Bar
-            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "OXYGEN", new Vector2(10, 90), Color.White, 1);
-            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 105, 200, 20), Color.Gray);
-            _spriteBatch.Draw(_pixelTexture, new Rectangle(10, 105, (int)(_player.Oxygen * 2), 20), Color.CornflowerBlue);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "OXYGEN", new Vector2(20, 180), Color.White, 2);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 210, 400, 40), Color.Gray);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 210, (int)(_player.Oxygen * 4), 40), Color.CornflowerBlue);
+
+            // Draw Control Labels
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS B TO BUILD", new Vector2(1920 - 400, 20), Color.White, 2);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS I FOR INVENTORY", new Vector2(1920 - 400, 60), Color.White, 2);
 
             // Draw Menus
             if (_showWorkbenchMenu)
             {
-                // Background
-                _spriteBatch.Draw(_pixelTexture, new Rectangle(250, 150, 300, 200), Color.DarkGray);
+                // Background (Centered on 1920x1080)
+                // 1920/2 = 960, 1080/2 = 540. Rect 400x300?
+                // Let's make it bigger: 600x400
+                Rectangle menuRect = new Rectangle(960 - 300, 540 - 200, 600, 400);
+                _spriteBatch.Draw(_pixelTexture, menuRect, Color.DarkGray);
+                
                 // Close Button
-                _spriteBatch.Draw(_pixelTexture, new Rectangle(510, 160, 30, 30), Color.Red);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "X", new Vector2(518, 168), Color.White, 2);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(menuRect.Right - 40, menuRect.Top + 10, 30, 30), Color.Red);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "X", new Vector2(menuRect.Right - 32, menuRect.Top + 18), Color.White, 2);
                 
                 // Title
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "WORKBENCH", new Vector2(260, 160), Color.White, 2);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "WORKBENCH", new Vector2(menuRect.X + 20, menuRect.Top + 20), Color.White, 4);
 
                 // Upgrade Backpack Button
                 int cost = 0;
@@ -637,48 +643,53 @@ namespace AntigravityMoon
 
                 if (_player.Inventory.UpgradeLevel < 2)
                 {
-                    _spriteBatch.Draw(_pixelTexture, new Rectangle(300, 200, 200, 50), canUpgrade ? Color.Blue : Color.Gray);
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "UPGRADE BAG", new Vector2(310, 215), Color.White, 2);
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, costText, new Vector2(310, 235), canUpgrade ? Color.White : Color.Red, 1);
+                    Rectangle btnRect = new Rectangle(menuRect.X + 50, menuRect.Top + 100, 300, 60);
+                    _spriteBatch.Draw(_pixelTexture, btnRect, canUpgrade ? Color.Blue : Color.Gray);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "UPGRADE BAG", new Vector2(btnRect.X + 10, btnRect.Y + 20), Color.White, 2);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, costText, new Vector2(btnRect.X + 10, btnRect.Y + 70), canUpgrade ? Color.White : Color.Red, 2);
                 }
                 else
                 {
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "MAX LEVEL", new Vector2(310, 215), Color.Gold, 2);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "MAX LEVEL", new Vector2(menuRect.X + 50, menuRect.Top + 100), Color.Gold, 4);
                 }
             }
             else if (_showGreenhouseMenu)
             {
                 // Background
-                _spriteBatch.Draw(_pixelTexture, new Rectangle(250, 150, 300, 200), Color.DarkGreen);
+                Rectangle menuRect = new Rectangle(960 - 300, 540 - 200, 600, 400);
+                _spriteBatch.Draw(_pixelTexture, menuRect, Color.DarkGreen);
+                
                 // Close Button
-                _spriteBatch.Draw(_pixelTexture, new Rectangle(510, 160, 30, 30), Color.Red);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "X", new Vector2(518, 168), Color.White, 2);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(menuRect.Right - 40, menuRect.Top + 10, 30, 30), Color.Red);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "X", new Vector2(menuRect.Right - 32, menuRect.Top + 18), Color.White, 2);
 
                 // Title
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "GREENHOUSE", new Vector2(260, 160), Color.White, 2);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "GREENHOUSE", new Vector2(menuRect.X + 20, menuRect.Top + 20), Color.White, 4);
 
                 // Plant Button
                 Color plantColor = (_interactedStructure != null && !_interactedStructure.IsGrowing && !_interactedStructure.IsReadyToHarvest) ? Color.Yellow : Color.Gray;
-                _spriteBatch.Draw(_pixelTexture, new Rectangle(300, 200, 200, 50), plantColor);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PLANT CORN", new Vector2(320, 215), Color.Black, 2);
+                Rectangle plantBtnRect = new Rectangle(menuRect.X + 50, menuRect.Top + 100, 300, 60);
+                _spriteBatch.Draw(_pixelTexture, plantBtnRect, plantColor);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PLANT CORN", new Vector2(plantBtnRect.X + 10, plantBtnRect.Y + 20), Color.Black, 2);
                 
                 // Draw Cost (1 Crystal)
                 if (_textures.ContainsKey("crystal"))
                 {
-                    _spriteBatch.Draw(_textures["crystal"], new Rectangle(510, 210, 30, 30), Color.White);
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "x1", new Vector2(545, 220), Color.White, 2);
+                    _spriteBatch.Draw(_textures["crystal"], new Rectangle(plantBtnRect.Right + 10, plantBtnRect.Y, 40, 40), Color.White);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "x1", new Vector2(plantBtnRect.Right + 60, plantBtnRect.Y + 10), Color.White, 2);
                 }
                 
                 // Harvest Button
                 Color harvestColor = (_interactedStructure != null && _interactedStructure.IsReadyToHarvest) ? Color.Green : Color.Gray;
-                _spriteBatch.Draw(_pixelTexture, new Rectangle(300, 260, 200, 50), harvestColor);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "HARVEST", new Vector2(340, 275), Color.Black, 2);
+                Rectangle harvestBtnRect = new Rectangle(menuRect.X + 50, menuRect.Top + 200, 300, 60);
+                _spriteBatch.Draw(_pixelTexture, harvestBtnRect, harvestColor);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "HARVEST", new Vector2(harvestBtnRect.X + 10, harvestBtnRect.Y + 20), Color.Black, 2);
 
                 // Growth Timer
                 if (_interactedStructure != null && _interactedStructure.IsGrowing)
                 {
                     string timerText = "GROWING: " + (10 - (int)_interactedStructure.GrowthTimer).ToString() + "S";
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, timerText, new Vector2(300, 320), Color.White, 2);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, timerText, new Vector2(menuRect.X + 50, menuRect.Top + 300), Color.White, 2);
                 }
             }
 
@@ -689,7 +700,7 @@ namespace AntigravityMoon
                 int menuWidth = 60;
                 int menuHeight = 6 * 50 + 7 * 5; // 6 slots * 50px + padding
                 int menuX = 10;
-                int menuY = (600 - menuHeight) / 2;
+                int menuY = (1080 - menuHeight) / 2;
                 
                 _spriteBatch.Draw(_pixelTexture, new Rectangle(menuX, menuY, menuWidth, menuHeight), Color.DarkGray);
 
