@@ -10,6 +10,9 @@ namespace AntigravityMoon
         public const int TileSize = 48;
         public const int ChunkSize = 16; // 16x16 tiles per chunk
         
+        // Event for spawning entities when chunks are generated
+        public event Action<Vector2, string> OnSpawnEntity;
+        
         private class Chunk
         {
             public int[,] Tiles;
@@ -74,6 +77,35 @@ namespace AntigravityMoon
                     for (int y = 0; y < ChunkSize; y++)
                     {
                         chunk.Tiles[x, y] = 0;
+                    }
+                }
+            }
+            
+            // Spawn resources in this chunk
+            for (int x = 0; x < ChunkSize; x++)
+            {
+                for (int y = 0; y < ChunkSize; y++)
+                {
+                    // Don't spawn on craters
+                    if (chunk.Tiles[x, y] != 2)
+                    {
+                        // Calculate world position
+                        int worldTileX = chunkCoord.X * ChunkSize + x;
+                        int worldTileY = chunkCoord.Y * ChunkSize + y;
+                        Vector2 worldPos = new Vector2(worldTileX * TileSize + TileSize / 2, worldTileY * TileSize + TileSize / 2);
+                        
+                        double spawnRoll = chunkRandom.NextDouble();
+                        
+                        // 2% chance to spawn Rock
+                        if (spawnRoll < 0.02)
+                        {
+                            OnSpawnEntity?.Invoke(worldPos, "Rock");
+                        }
+                        // 1% chance to spawn Crystal
+                        else if (spawnRoll < 0.03)
+                        {
+                            OnSpawnEntity?.Invoke(worldPos, "Crystal");
+                        }
                     }
                 }
             }

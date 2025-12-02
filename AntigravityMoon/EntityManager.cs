@@ -28,10 +28,19 @@ namespace AntigravityMoon
             return _entities;
         }
 
-        public void Draw(SpriteBatch spriteBatch, Dictionary<string, Texture2D> textures, Vector2 mouseWorldPos)
+        public void Draw(SpriteBatch spriteBatch, Dictionary<string, Texture2D> textures, Vector2 mouseWorldPos, TileMap tileMap)
         {
             foreach (var entity in _entities)
             {
+                // Check if entity is in explored area
+                int tileX = (int)System.Math.Floor(entity.Position.X / TileMap.TileSize);
+                int tileY = (int)System.Math.Floor(entity.Position.Y / TileMap.TileSize);
+                
+                if (!tileMap.IsExplored(tileX, tileY))
+                {
+                    continue; // Skip drawing unexplored entities
+                }
+                
                 string key = entity.Type.ToLower();
                 if (textures.ContainsKey(key))
                 {

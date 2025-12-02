@@ -36,9 +36,11 @@ namespace AntigravityMoon
             _entityManager = new EntityManager();
             _player = new Player(Vector2.Zero); // Start at world origin
 
-            // Add some test entities
-            _entityManager.AddEntity(new Entity(new Vector2(300, 300), "Rock", true, true, true)); // Rock is harvestable and solid
-            _entityManager.AddEntity(new Entity(new Vector2(400, 200), "Crystal", true, true, true)); // Crystal is harvestable and solid
+            // Subscribe to entity spawning from TileMap
+            _tileMap.OnSpawnEntity += (position, entityType) =>
+            {
+                _entityManager.AddEntity(new Entity(position, entityType, true, true, true));
+            };
 
             base.Initialize();
         }
@@ -976,7 +978,7 @@ namespace AntigravityMoon
                 // Calculate Mouse World Pos for Hover Logic
                 Vector2 mouseWorldPos = _camera.ScreenToWorld(new Vector2(Mouse.GetState().X, Mouse.GetState().Y));
                 
-                _entityManager.Draw(_spriteBatch, _textures, mouseWorldPos);
+                _entityManager.Draw(_spriteBatch, _textures, mouseWorldPos, _tileMap);
                 
                 // Draw Backpacks explicitly if needed, or let EntityManager handle it if we pass textures correctly?
                 // EntityManager.Draw iterates and calls entity.Draw(sb, texture, mouse).
