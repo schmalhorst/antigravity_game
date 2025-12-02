@@ -77,10 +77,23 @@ namespace AntigravityMoon
 
         public override void Draw(SpriteBatch spriteBatch, Texture2D texture, Vector2 mouseWorldPos)
         {
-            // Draw alien wider - 64x32
+            // Draw alien wider - 128x64
             Rectangle bounds = new Rectangle((int)Position.X, (int)Position.Y, 128, 64);
             spriteBatch.Draw(texture, bounds, Color.White);
             
+            // Draw HP Bar
+            int barWidth = 100;
+            int barHeight = 10;
+            int barX = (int)Position.X + (128 - barWidth) / 2;
+            int barY = (int)Position.Y - 20;
+            
+            // Background (Red)
+            spriteBatch.Draw(texture, new Rectangle(barX, barY, barWidth, barHeight), new Rectangle(0,0,1,1), Color.Red); // Use 1x1 pixel from texture for solid color
+            
+            // Foreground (Green)
+            int currentHealthWidth = (int)(barWidth * (Health / 100f));
+            spriteBatch.Draw(texture, new Rectangle(barX, barY, currentHealthWidth, barHeight), new Rectangle(0,0,1,1), Color.Green);
+
             // Draw Label only if hovering
             if (bounds.Contains(mouseWorldPos))
             {

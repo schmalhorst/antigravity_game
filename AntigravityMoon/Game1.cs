@@ -3,6 +3,7 @@ using System.IO;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System;
 
 namespace AntigravityMoon
 {
@@ -125,6 +126,16 @@ namespace AntigravityMoon
         
         // Death Screen
         private bool _showDeathScreen = false;
+
+        // Laser System
+        private struct Laser
+        {
+            public Vector2 Start;
+            public Vector2 End;
+            public float Duration;
+            public float MaxDuration;
+        }
+        private List<Laser> _lasers = new List<Laser>();
 
         private Vector2 GetInventoryPosition()
         {
@@ -397,6 +408,8 @@ namespace AntigravityMoon
                         if (alienBounds.Contains(mouseWorldPos))
                         {
                             alien.TakeDamage(10f); // 10% damage per click
+                            // Add Laser
+                            _lasers.Add(new Laser { Start = _player.Position + new Vector2(16, 16), End = mouseWorldPos, Duration = 0.2f, MaxDuration = 0.2f });
                             hitAlien = true;
                             break;
                         }
@@ -409,6 +422,9 @@ namespace AntigravityMoon
                     {
                         if (entity is Structure s && Vector2.Distance(s.Position, mouseWorldPos) < 40)
                         {
+                            // Add Laser for object interaction too
+                            _lasers.Add(new Laser { Start = _player.Position + new Vector2(16, 16), End = mouseWorldPos, Duration = 0.2f, MaxDuration = 0.2f });
+
                             if (Vector2.Distance(_player.Position, s.Position) < 100) // Must be close
                             {
                                 if (s.Type == "Workbench")
@@ -519,6 +535,18 @@ namespace AntigravityMoon
                         _aliens.RemoveAt(i);
                     }
                 }
+
+            // Update Lasers
+            for (int i = _lasers.Count - 1; i >= 0; i--)
+            {
+                Laser l = _lasers[i];
+                l.Duration -= dt;
+                _lasers[i] = l; // Update struct in list
+                if (l.Duration <= 0)
+                {
+                    _lasers.RemoveAt(i);
+                }
+            }          }
             }
 
 
@@ -639,7 +667,7 @@ namespace AntigravityMoon
                 }
             }
 
-            }
+
 
             _prevKeyboardState = currentKeyboardState;
             _prevMouseState = currentMouseState;
@@ -717,6 +745,13 @@ namespace AntigravityMoon
                 foreach (var alien in _aliens)
                 {
                     alien.Draw(_spriteBatch, _textures.ContainsKey("metro_alien") ? _textures["metro_alien"] : _pixelTexture, mouseWorldPos);
+                }
+
+                // Draw Lasers
+                foreach (var laser in _lasers)
+                {
+                    float alpha = laser.Duration / laser.MaxDuration;
+                    DrawLine(_spriteBatch, _pixelTexture, laser.Start, laser.End, Color.Cyan * alpha, 2);
                 }
 
                 _player.Draw(_spriteBatch, _textures.ContainsKey("astronaut") ? _textures["astronaut"] : _pixelTexture, _textures);
@@ -999,6 +1034,12 @@ namespace AntigravityMoon
             }
 
             base.Draw(gameTime);
+        }
+        private void DrawLine(SpriteBatch spriteBatch, Texture2D texture, Vector2 start, Vector2 end, Color color, int thickness)
+        {
+            Vector2 edge = end - start;
+            float angle = (float)Math.Atan2(edge.Y, edge.X);
+            spriteBatch.Draw(texture, new Rectangle((int)start.X, (int)start.Y, (int)edge.Length(), thickness), null, color, angle, new Vector2(0, 0.5f), SpriteEffects.None, 0);
         }
     }
 }
