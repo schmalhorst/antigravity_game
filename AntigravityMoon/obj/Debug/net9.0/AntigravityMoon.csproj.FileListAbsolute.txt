@@ -32,3 +32,14 @@
 /Users/johnschmalhorst/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.genruntimeconfig.cache
 /Users/johnschmalhorst/antigravity_game/AntigravityMoon/obj/Debug/net9.0/ref/AntigravityMoon.dll
 /Users/johnschmalhorst/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.sourcelink.json
+/Users/johnschmalhorst/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/astronaut.xnb
+/Users/johnschmalhorst/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/backpack.xnb
+/Users/johnschmalhorst/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/corn.xnb
+/Users/johnschmalhorst/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/crystal.xnb
+/Users/johnschmalhorst/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/greenhouse.xnb
+/Users/johnschmalhorst/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/metro_alien.xnb
+/Users/johnschmalhorst/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/moon_ground.xnb
+/Users/johnschmalhorst/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/rock.xnb
+/Users/johnschmalhorst/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/skull_crossbones.xnb
+/Users/johnschmalhorst/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/spaceship.xnb
+/Users/johnschmalhorst/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/workbench.xnb

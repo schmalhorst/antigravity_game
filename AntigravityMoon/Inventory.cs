@@ -25,6 +25,18 @@ namespace AntigravityMoon
             _items = new InventorySlot[Cols, Rows];
         }
 
+        public bool IsEmpty()
+        {
+            for (int y = 0; y < Rows; y++)
+            {
+                for (int x = 0; x < Cols; x++)
+                {
+                    if (_items[x, y].ItemName != null) return false;
+                }
+            }
+            return true;
+        }
+
         public bool Upgrade()
         {
             if (UpgradeLevel == 0)
@@ -117,6 +129,15 @@ namespace AntigravityMoon
                 }
             }
         }
+        
+        public int GetItemCount(int x, int y)
+        {
+            if (x >= 0 && x < Cols && y >= 0 && y < Rows)
+            {
+                return _items[x, y].Count;
+            }
+            return 0;
+        }
 
         public int CountItem(string type)
         {
@@ -178,6 +199,24 @@ namespace AntigravityMoon
             RemoveItem(x, y);
         }
 
+        public Inventory Clone()
+        {
+            Inventory newInv = new Inventory();
+            newInv.UpgradeLevel = this.UpgradeLevel;
+            newInv.Rows = this.Rows;
+            newInv.Cols = this.Cols;
+            newInv._items = new InventorySlot[this.Cols, this.Rows]; // Initialize the _items array in the new inventory
+            
+            for (int y = 0; y < Rows; y++)
+            {
+                for (int x = 0; x < Cols; x++)
+                {
+                    newInv._items[x, y] = this._items[x, y]; // Copy each InventorySlot struct
+                }
+            }
+            return newInv;
+        }
+
         public void Clear()
         {
             for (int y = 0; y < Rows; y++)
@@ -229,19 +268,20 @@ namespace AntigravityMoon
                         }
                         
                         // Draw Item Name (Small)
-                        PixelTextRenderer.DrawText(spriteBatch, pixelTexture, itemName, new Vector2(rect.X + 2, rect.Y + 2), Color.Black, 1);
+                        // PixelTextRenderer.DrawText(spriteBatch, pixelTexture, itemName, new Vector2(rect.X + 2, rect.Y + 2), Color.Black, 1); // Removed as per new logic
 
                         // Draw Count if > 1
                         if (_items[x, y].Count > 1)
                         {
-                            string countText = _items[x, y].Count.ToString();
-                            Vector2 countPos = new Vector2(rect.X + cellSize - 12, rect.Y + cellSize - 8);
+                            string countText = "x" + _items[x, y].Count;
+                            Vector2 countPos = new Vector2(rect.X + 2, rect.Y + cellSize - 14); // Position at bottom-left
                             
-                            // Draw background for count
-                            spriteBatch.Draw(pixelTexture, new Rectangle((int)countPos.X - 1, (int)countPos.Y - 1, (countText.Length * 4) + 1, 7), Color.Black * 0.7f);
+                            // Draw background for count (larger)
+                            int bgWidth = (countText.Length * 6) + 2;
+                            spriteBatch.Draw(pixelTexture, new Rectangle((int)countPos.X - 1, (int)countPos.Y - 1, bgWidth, 10), Color.Black * 0.9f);
                             
-                            // Draw bottom right
-                            PixelTextRenderer.DrawText(spriteBatch, pixelTexture, countText, countPos, Color.White, 1);
+                            // Draw count text (larger font size 2)
+                            PixelTextRenderer.DrawText(spriteBatch, pixelTexture, countText, countPos, Color.White, 2);
                         }
                     }
                 }

@@ -63,6 +63,11 @@ namespace AntigravityMoon
             LoadTexture("corn");
             LoadTexture("spaceship");
             LoadTexture("metro_alien");
+            _textures["backpack"] = Content.Load<Texture2D>("backpack");
+            _textures["skull_crossbones"] = Content.Load<Texture2D>("skull_crossbones");
+            
+            _backpackTexture = _textures["backpack"];
+            _skullTexture = _textures["skull_crossbones"];
             _spaceshipTexture = _textures["spaceship"];
             _spaceshipPosition = new Vector2(400, -100); // Start off screen
         }
@@ -139,7 +144,21 @@ namespace AntigravityMoon
 
         // Minimap
         private bool _showMinimap = true;
-        private int _minimapSize = 1; // 1 = Small, 2 = Large
+        private int _minimapSize = 1; // 0=Hidden, 1=Small, 2=Large
+        private Texture2D _minimapFrameTexture; // Optional
+        
+        // Death Drop
+        private bool _showLootMenu = false;
+        private Backpack _interactedBackpack;
+        private Texture2D _backpackTexture;
+        private Texture2D _skullTexture;
+        
+        // Backpack Context Menu
+        private bool _showBackpackContextMenu = false;
+        private Vector2 _backpackContextMenuPos;
+        private string _backpackContextMenuItem;
+        private Point _backpackContextMenuItemGridPos;
+        private int _backpackContextMenuItemCount; // Track stack count
         private const int MinimapScaleSmall = 4;
         private const int MinimapScaleLarge = 8;
 
@@ -215,6 +234,13 @@ namespace AntigravityMoon
                     Rectangle respawnBtn = new Rectangle(960 - 150, 540 + 50, 300, 60);
                     if (respawnBtn.Contains(currentMouseState.Position))
                     {
+                        // Drop Backpack before respawning
+                        if (!_player.Inventory.IsEmpty())
+                        {
+                            Backpack droppedPack = new Backpack(_player.Position, _player.Inventory.Clone());
+                            _entityManager.AddEntity(droppedPack);
+                        }
+
                         _showDeathScreen = false;
                         _player.DoRespawn();
                         // Reset game state for respawn
@@ -233,10 +259,14 @@ namespace AntigravityMoon
             if (currentKeyboardState.IsKeyDown(Keys.I) && !_prevKeyboardState.IsKeyDown(Keys.I))
             {
                 _showInventory = !_showInventory;
-                _showWorkbenchMenu = false;
-                _showGreenhouseMenu = false;
-                _showSpaceshipMenu = false;
-                _showInventoryContextMenu = false;
+                if (_showInventory)
+                {
+                    _buildModeState = BuildModeState.None; // Close Build Menu
+                    _showWorkbenchMenu = false;
+                    _showGreenhouseMenu = false;
+                    _showSpaceshipMenu = false;
+                    _showInventoryContextMenu = false;
+                }
             }
 
             // Minimap Toggle
@@ -321,6 +351,177 @@ namespace AntigravityMoon
                                 _contextMenuItem = item;
                                 _contextMenuItemGridPos = new Point(col, row);
                             }
+                        }
+                    }
+                }
+            }
+
+            // Handle Loot Menu Input
+            if (_showLootMenu && _interactedBackpack != null)
+            {
+                if (currentKeyboardState.IsKeyDown(Keys.Escape) || Vector2.Distance(_player.Position, _interactedBackpack.Position) > 100)
+                {
+                    _showLootMenu = false;
+                    _interactedBackpack = null;
+                    _showBackpackContextMenu = false;
+                }
+                
+                // Handle Backpack Context Menu
+                if (_showBackpackContextMenu)
+                {
+                    if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
+                    {
+                        int menuHeight = _backpackContextMenuItemCount > 1 ? 50 : 25;
+                        Rectangle lootRect = new Rectangle((int)_backpackContextMenuPos.X, (int)_backpackContextMenuPos.Y, 80, 25);
+                        Rectangle lootAllRect = new Rectangle((int)_backpackContextMenuPos.X, (int)_backpackContextMenuPos.Y + 25, 80, 25);
+                        
+                        if (lootRect.Contains(currentMouseState.Position))
+                        {
+                            // Loot single item
+                            if (_backpackContextMenuItem != null)
+                            {
+                                if (_player.Inventory.AddItem(_backpackContextMenuItem))
+                                {
+                                    _interactedBackpack.Storage.RemoveItem(_backpackContextMenuItemGridPos.X, _backpackContextMenuItemGridPos.Y);
+                                    
+                                    // If backpack empty, destroy it
+                                    if (_interactedBackpack.Storage.IsEmpty())
+                                    {
+                                        _entityManager.RemoveEntity(_interactedBackpack);
+                                        _showLootMenu = false;
+                                        _interactedBackpack = null;
+                                    }
+                                }
+                            }
+                            _showBackpackContextMenu = false;
+                        }
+                        else if (_backpackContextMenuItemCount > 1 && lootAllRect.Contains(currentMouseState.Position))
+                        {
+                            // Loot all items in stack
+                            if (_backpackContextMenuItem != null)
+                            {
+                                int count = _backpackContextMenuItemCount;
+                                bool success = true;
+                                
+                                // Try to add all items
+                                for (int i = 0; i < count; i++)
+                                {
+                                    if (!_player.Inventory.AddItem(_backpackContextMenuItem))
+                                    {
+                                        success = false;
+                                        break;
+                                    }
+                                }
+                                
+                                if (success)
+                                {
+                                    // Remove all from backpack
+                                    for (int i = 0; i < count; i++)
+                                    {
+                                        _interactedBackpack.Storage.RemoveItem(_backpackContextMenuItemGridPos.X, _backpackContextMenuItemGridPos.Y);
+                                    }
+                                    
+                                    // If backpack empty, destroy it
+                                    if (_interactedBackpack.Storage.IsEmpty())
+                                    {
+                                        _entityManager.RemoveEntity(_interactedBackpack);
+                                        _showLootMenu = false;
+                                        _interactedBackpack = null;
+                                    }
+                                }
+                            }
+                            _showBackpackContextMenu = false;
+                        }
+                        else
+                        {
+                            _showBackpackContextMenu = false;
+                        }
+                    }
+                }
+                else
+                {
+                    // Right Click to Loot Item (open context menu)
+                    if (currentMouseState.RightButton == ButtonState.Pressed && _prevMouseState.RightButton == ButtonState.Released)
+                    {
+                        Vector2 lootPos = new Vector2(1920 / 2 - 200, 1080 / 2 - 150);
+                        int startX = (int)lootPos.X;
+                        int startY = (int)lootPos.Y;
+                        int cellSize = 40;
+                        int padding = 5;
+                        
+                        int mx = currentMouseState.X;
+                        int my = currentMouseState.Y;
+                        
+                        if (mx >= startX && my >= startY)
+                        {
+                            int col = (mx - startX) / (cellSize + padding);
+                            int row = (my - startY) / (cellSize + padding);
+                            
+                            if (col >= 0 && col < _interactedBackpack.Storage.Cols && row >= 0 && row < _interactedBackpack.Storage.Rows)
+                            {
+                                string item = _interactedBackpack.Storage.GetItem(col, row);
+                                if (item != null)
+                                {
+                                    _showBackpackContextMenu = true;
+                                    _backpackContextMenuPos = new Vector2(mx, my);
+                                    _backpackContextMenuItem = item;
+                                    _backpackContextMenuItemGridPos = new Point(col, row);
+                                    _backpackContextMenuItemCount = _interactedBackpack.Storage.GetItemCount(col, row);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Handle Collect All button
+                if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
+                {
+                    Rectangle collectAllBtn = new Rectangle(1920 / 2 + 220, 1080 / 2 - 150, 150, 40);
+                    
+                    if (collectAllBtn.Contains(currentMouseState.Position))
+                    {
+                        // Check if player has space for all items
+                        int totalItems = 0;
+                        for (int y = 0; y < _interactedBackpack.Storage.Rows; y++)
+                        {
+                            for (int x = 0; x < _interactedBackpack.Storage.Cols; x++)
+                            {
+                                if (_interactedBackpack.Storage.GetItem(x, y) != null)
+                                    totalItems++;
+                            }
+                        }
+                        
+                        int emptySlots = 0;
+                        for (int y = 0; y < _player.Inventory.Rows; y++)
+                        {
+                            for (int x = 0; x < _player.Inventory.Cols; x++)
+                            {
+                                if (_player.Inventory.GetItem(x, y) == null)
+                                    emptySlots++;
+                            }
+                        }
+                        
+                        if (emptySlots >= totalItems)
+                        {
+                            // Transfer all items
+                            for (int y = 0; y < _interactedBackpack.Storage.Rows; y++)
+                            {
+                                for (int x = 0; x < _interactedBackpack.Storage.Cols; x++)
+                                {
+                                    string item = _interactedBackpack.Storage.GetItem(x, y);
+                                    if (item != null)
+                                    {
+                                        _player.Inventory.AddItem(item);
+                                        _interactedBackpack.Storage.RemoveItem(x, y);
+                                    }
+                                }
+                            }
+                            
+                            // Destroy backpack
+                            _entityManager.RemoveEntity(_interactedBackpack);
+                            _showLootMenu = false;
+                            _interactedBackpack = null;
+                            _showBackpackContextMenu = false;
                         }
                     }
                 }
@@ -461,6 +662,15 @@ namespace AntigravityMoon
                                 }
                             }
                         }
+                        else if (entity is Backpack bp && Vector2.Distance(bp.Position, mouseWorldPos) < 40)
+                        {
+                             if (Vector2.Distance(_player.Position, bp.Position) < 100)
+                             {
+                                 _showLootMenu = true;
+                                 _interactedBackpack = bp;
+                                 _showInventory = true; // Open player inventory too for transfer
+                             }
+                        }
                     }
                     }
                 }
@@ -570,7 +780,11 @@ namespace AntigravityMoon
             // Toggle Build Menu
             if (currentKeyboardState.IsKeyDown(Keys.B) && !_prevKeyboardState.IsKeyDown(Keys.B))
             {
-                if (_buildModeState == BuildModeState.None) _buildModeState = BuildModeState.Menu;
+                if (_buildModeState == BuildModeState.None) 
+                {
+                    _buildModeState = BuildModeState.Menu;
+                    _showInventory = false; // Close Inventory
+                }
                 else _buildModeState = BuildModeState.None;
                 
                 _showEditContextMenu = false;
@@ -764,6 +978,21 @@ namespace AntigravityMoon
                 
                 _entityManager.Draw(_spriteBatch, _textures, mouseWorldPos);
                 
+                // Draw Backpacks explicitly if needed, or let EntityManager handle it if we pass textures correctly?
+                // EntityManager.Draw iterates and calls entity.Draw(sb, texture, mouse).
+                // But EntityManager.Draw takes a Dictionary and tries to find texture by name?
+                // Let's check EntityManager.Draw.
+                
+                // If EntityManager.Draw does:
+                // foreach(e) { 
+                //    tex = textures.ContainsKey(e.Type.ToLower()) ? textures[e.Type.ToLower()] : pixel;
+                //    e.Draw(sb, tex, mouse);
+                // }
+                // Then we just need to make sure "backpack" is in textures.
+                // We added "backpack" to textures in LoadContent.
+                // Backpack entity Type is "Backpack". ToLower is "backpack".
+                // So EntityManager should handle it correctly now that signatures match.
+                
                 // Draw Aliens
                 foreach (var alien in _aliens)
                 {
@@ -880,7 +1109,10 @@ namespace AntigravityMoon
                 if (_textures.ContainsKey("crystal"))
                 {
                     _spriteBatch.Draw(_textures["crystal"], new Rectangle(plantBtnRect.Right + 10, plantBtnRect.Y, 40, 40), Color.White);
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "x1", new Vector2(plantBtnRect.Right + 60, plantBtnRect.Y + 10), Color.White, 2);
+                    
+                    bool canAfford = _player.Inventory.CountItem("Crystal") >= 1;
+                    Color costColor = canAfford ? Color.White : Color.Red;
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "x1", new Vector2(plantBtnRect.Right + 60, plantBtnRect.Y + 10), costColor, 2);
                 }
                 
                 // Harvest Button
@@ -970,7 +1202,7 @@ namespace AntigravityMoon
             }
 
 
-            // Draw Spaceship Menu
+                // Draw Spaceship Menu
             if (_showSpaceshipMenu)
             {
                 int menuWidth = 300;
@@ -1001,6 +1233,60 @@ namespace AntigravityMoon
                 // Cost
                 Color costColor = canAfford ? Color.White : Color.Red;
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "COST: 2 ROCKS", new Vector2(menuX + 80, menuY + 110), costColor, 2);
+            }
+
+            // Draw Loot Menu
+            if (_showLootMenu && _interactedBackpack != null)
+            {
+                // Draw Backpack Inventory
+                _interactedBackpack.Storage.Draw(_spriteBatch, _pixelTexture, _textures, new Vector2(1920 / 2 - 200, 1080 / 2 - 150));
+                
+                // Draw Title
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "LOOT BACKPACK", new Vector2(1920 / 2 - 100, 1080 / 2 - 200), Color.White, 2);
+                
+                // Draw "COLLECT ALL" Button
+                Rectangle collectAllBtn = new Rectangle(1920 / 2 + 220, 1080 / 2 - 150, 150, 40);
+                
+                // Check if player has space for all items
+                int totalItems = 0;
+                for (int y = 0; y < _interactedBackpack.Storage.Rows; y++)
+                {
+                    for (int x = 0; x < _interactedBackpack.Storage.Cols; x++)
+                    {
+                        if (_interactedBackpack.Storage.GetItem(x, y) != null)
+                            totalItems++;
+                    }
+                }
+                
+                int emptySlots = 0;
+                for (int y = 0; y < _player.Inventory.Rows; y++)
+                {
+                    for (int x = 0; x < _player.Inventory.Cols; x++)
+                    {
+                        if (_player.Inventory.GetItem(x, y) == null)
+                            emptySlots++;
+                    }
+                }
+                
+                bool canCollectAll = emptySlots >= totalItems;
+                Color btnColor = canCollectAll ? Color.Green : Color.Gray;
+                Color textColor = canCollectAll ? Color.White : Color.DarkGray;
+                
+                _spriteBatch.Draw(_pixelTexture, collectAllBtn, btnColor);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "COLLECT ALL", new Vector2(collectAllBtn.X + 10, collectAllBtn.Y + 10), textColor, 2);
+            }
+
+            // Draw Backpack Context Menu
+            if (_showBackpackContextMenu)
+            {
+                int menuHeight = _backpackContextMenuItemCount > 1 ? 50 : 25;
+                _spriteBatch.Draw(_pixelTexture, new Rectangle((int)_backpackContextMenuPos.X, (int)_backpackContextMenuPos.Y, 100, menuHeight), Color.White);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "LOOT", new Vector2(_backpackContextMenuPos.X + 5, _backpackContextMenuPos.Y + 5), Color.Black, 2);
+                
+                if (_backpackContextMenuItemCount > 1)
+                {
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "LOOT ALL", new Vector2(_backpackContextMenuPos.X + 5, _backpackContextMenuPos.Y + 30), Color.Black, 2);
+                }
             }
 
             // Draw Inventory Context Menu
@@ -1040,7 +1326,7 @@ namespace AntigravityMoon
                         causeMessage = "YOU STARVED TO DEATH - YOU SHOULD HAVE EATEN THAT CRISPY CORN";
                         break;
                     case DeathCause.Alien:
-                        causeMessage = "YOU WERE KILLED BY A METRO ALIEN - THANKS OLLIE...";
+                        causeMessage = "YOU WERE KILLED BY A METRO ALIEN - THANKS SCHMOLLIE...";
                         break;
                 }
                 
@@ -1052,8 +1338,9 @@ namespace AntigravityMoon
                 _spriteBatch.Draw(_pixelTexture, respawnBtn, Color.Green);
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "RESPAWN", new Vector2(respawnBtn.X + 50, respawnBtn.Y + 20), Color.Black, 3);
             }
-
+            
             _spriteBatch.End();
+            }
 
             // Draw Minimap (UI Layer)
             _spriteBatch.Begin();
@@ -1091,14 +1378,53 @@ namespace AntigravityMoon
                     }
                 }
 
+                // Draw Entities on Minimap
+                foreach (var entity in _entityManager.GetEntities())
+                {
+                    if (entity is Backpack)
+                    {
+                        // Draw Skull (Clamp to edge if out of range)
+                        int entityTileX = (int)Math.Floor(entity.Position.X / TileMap.TileSize);
+                        int entityTileY = (int)Math.Floor(entity.Position.Y / TileMap.TileSize);
+                        
+                        int relX = entityTileX - playerTileX;
+                        int relY = entityTileY - playerTileY;
+                        
+                        // Check if out of range
+                        bool outOfRange = Math.Abs(relX) >= mapRange || Math.Abs(relY) >= mapRange;
+                        
+                        // Clamp relative coordinates to [-mapRange, mapRange]
+                        int clampedRelX = Math.Clamp(relX, -mapRange, mapRange - 1);
+                        int clampedRelY = Math.Clamp(relY, -mapRange, mapRange - 1);
+                        
+                        int minimapX = mapX + (clampedRelX + mapRange) * scale;
+                        int minimapY = mapY + (clampedRelY + mapRange) * scale;
+                        
+                        // Draw larger skull (3x scale) for visibility
+                        int skullSize = scale * 3;
+                        int skullX = minimapX - scale; // Center it
+                        int skullY = minimapY - scale;
+                        
+                        if (_textures.ContainsKey("skull_crossbones"))
+                        {
+                            // Draw Red background to make it pop
+                            _spriteBatch.Draw(_pixelTexture, new Rectangle(skullX, skullY, skullSize, skullSize), Color.Red);
+                            _spriteBatch.Draw(_textures["skull_crossbones"], new Rectangle(skullX, skullY, skullSize, skullSize), Color.White);
+                        }
+                        else
+                        {
+                            _spriteBatch.Draw(_pixelTexture, new Rectangle(skullX, skullY, skullSize, skullSize), Color.Magenta);
+                        }
+                    }
+                }
+
                 // Draw Player (center of minimap)
                 int playerScreenX = mapX + mapRange * scale;
                 int playerScreenY = mapY + mapRange * scale;
                 _spriteBatch.Draw(_pixelTexture, new Rectangle(playerScreenX, playerScreenY, scale, scale), Color.Red);
             }
             _spriteBatch.End();
-            }
-
+            
             base.Draw(gameTime);
         }
         private void DrawLine(SpriteBatch spriteBatch, Texture2D texture, Vector2 start, Vector2 end, Color color, int thickness)
