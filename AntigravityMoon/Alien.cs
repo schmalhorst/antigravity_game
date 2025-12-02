@@ -10,6 +10,7 @@ namespace AntigravityMoon
         public int HitsTaken { get; private set; } = 0;
         public float DamageCooldown { get; private set; } = 0f;
         public bool IsDead { get; private set; } = false;
+        public float Health { get; private set; } = 100f;
 
         public Alien(Vector2 position) 
             : base(position, "Alien", true, false, false) // Movable, Not Harvestable, Not Solid (so it can overlap/hit)
@@ -50,6 +51,16 @@ namespace AntigravityMoon
                         Explode(player);
                     }
                 }
+            }
+        }
+
+        public void TakeDamage(float amount)
+        {
+            Health -= amount;
+            if (Health <= 0)
+            {
+                Health = 0;
+                IsDead = true;
             }
         }
 

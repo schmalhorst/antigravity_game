@@ -367,7 +367,24 @@ namespace AntigravityMoon
                 if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
                 {
                     Vector2 mouseWorldPos = _camera.ScreenToWorld(new Vector2(currentMouseState.X, currentMouseState.Y));
-                    foreach (var entity in _entityManager.GetEntities())
+                    
+                    // Check for alien clicks first
+                    bool hitAlien = false;
+                    foreach (var alien in _aliens)
+                    {
+                        Rectangle alienBounds = new Rectangle((int)alien.Position.X, (int)alien.Position.Y, 128, 64);
+                        if (alienBounds.Contains(mouseWorldPos))
+                        {
+                            alien.TakeDamage(10f); // 10% damage per click
+                            hitAlien = true;
+                            break;
+                        }
+                    }
+                    
+                    // Only check structure interactions if we didn't hit an alien
+                    if (!hitAlien)
+                    {
+                        foreach (var entity in _entityManager.GetEntities())
                     {
                         if (entity is Structure s && Vector2.Distance(s.Position, mouseWorldPos) < 40)
                         {
@@ -390,6 +407,7 @@ namespace AntigravityMoon
                                 }
                             }
                         }
+                    }
                     }
                 }
                 
@@ -667,7 +685,7 @@ namespace AntigravityMoon
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 130, (int)(_player.Hunger * 4), 40), Color.Orange);
 
             // Draw Oxygen Bar
-            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "OXYGEN", new Vector2(20, 180), Color.White, 2);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "OXYJIN", new Vector2(20, 180), Color.White, 2);
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 210, 400, 40), Color.Gray);
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 210, (int)(_player.Oxygen * 4), 40), Color.CornflowerBlue);
 
@@ -848,18 +866,18 @@ namespace AntigravityMoon
                 _spriteBatch.Draw(_pixelTexture, new Rectangle(0, 0, 1920, 1080), Color.Black * 0.8f);
                 
                 // Death message
-                string deathMessage = "YOU DIED";
+                string deathMessage = "YOU D.E.D.";
                 string causeMessage = "";
                 switch (_player.LastDeathCause)
                 {
                     case DeathCause.Oxygen:
-                        causeMessage = "OXYGEN DEPLETED";
+                        causeMessage = "YOUR OXYJIN DEPLETED - IF YOU KNOW, YOU KNOW...";
                         break;
                     case DeathCause.Hunger:
-                        causeMessage = "STARVED TO DEATH";
+                        causeMessage = "YOU STARVED TO DEATH - YOU SHOULD HAVE EATEN THAT CRISPY BEEF";
                         break;
                     case DeathCause.Alien:
-                        causeMessage = "KILLED BY METRO ALIEN";
+                        causeMessage = "YOU WERE KILLED BY A METRO ALIEN - THANKS OLLIE...";
                         break;
                 }
                 
