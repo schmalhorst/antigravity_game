@@ -325,6 +325,30 @@ namespace AntigravityMoon
                 { true, false, false },
                 { true, false, true }
             };
+            // .
+            _charMap['.'] = new bool[,] {
+                { false, false, false },
+                { false, false, false },
+                { false, false, false },
+                { false, false, false },
+                { false, true, false }
+            };
+            // -
+            _charMap['-'] = new bool[,] {
+                { false, false, false },
+                { false, false, false },
+                { true, true, true },
+                { false, false, false },
+                { false, false, false }
+            };
+            // ,
+            _charMap[','] = new bool[,] {
+                { false, false, false },
+                { false, false, false },
+                { false, false, false },
+                { false, false, false },
+                { false, true, false } // Same as period for 3x5 simplicity, or could be bottom-left
+            };
         }
 
         public static void DrawText(SpriteBatch spriteBatch, Texture2D texture, string text, Vector2 position, Color color, int scale = 1)

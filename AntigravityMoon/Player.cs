@@ -34,8 +34,8 @@ namespace AntigravityMoon
         public float Oxygen { get; private set; } = 100f;
         public DeathCause LastDeathCause { get; private set; } = DeathCause.None;
         public bool IsDead { get; private set; } = false;
-        private float _hungerDecayRate = 1.0f; // Per second
-        private float _oxygenDecayRate = 2.0f; // Per second (50s supply)
+        private float _hungerDecayRate = 3.0f; // Per second
+        private float _oxygenDecayRate = 0.5f; // Per second (200s supply)
         private Vector2 _spawnPoint;
 
         public Player(Vector2 startPosition)

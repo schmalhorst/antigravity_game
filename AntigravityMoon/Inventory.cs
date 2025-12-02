@@ -164,6 +164,20 @@ namespace AntigravityMoon
             return true;
         }
 
+        public string GetItemAt(int index)
+        {
+            int x = index % Cols;
+            int y = index / Cols;
+            return GetItem(x, y);
+        }
+
+        public void RemoveItemAt(int index)
+        {
+            int x = index % Cols;
+            int y = index / Cols;
+            RemoveItem(x, y);
+        }
+
         public void Clear()
         {
             for (int y = 0; y < Rows; y++)

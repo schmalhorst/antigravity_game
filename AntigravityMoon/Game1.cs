@@ -223,17 +223,36 @@ namespace AntigravityMoon
             // Inventory Context Menu Logic
             if (_showInventory && _showInventoryContextMenu)
             {
-                // Close if clicked outside
                 if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
                 {
-                    Rectangle eatButtonRect = new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, 60, 20);
-                    if (eatButtonRect.Contains(currentMouseState.Position))
+                    bool isFood = _contextMenuItem == "Corn";
+                    int menuHeight = isFood ? 50 : 25;
+                    
+                    Rectangle eatRect = isFood ? new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, 60, 25) : Rectangle.Empty;
+                    Rectangle dropRect = isFood ? 
+                        new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y + 25, 60, 25) : 
+                        new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, 60, 25);
+                    
+                    if (isFood && eatRect.Contains(currentMouseState.Position))
                     {
-                        // Eat Action
-                        if (_contextMenuItem == "Corn")
+                        // Eat
+                        if (_contextMenuItem != null)
                         {
-                            _player.Inventory.RemoveItem(_contextMenuItemGridPos.X, _contextMenuItemGridPos.Y);
+                            _player.Inventory.RemoveItem((int)_contextMenuItemGridPos.X, (int)_contextMenuItemGridPos.Y);
                             _player.Eat(100f);
+                        }
+                        _showInventoryContextMenu = false;
+                    }
+                    else if (dropRect.Contains(currentMouseState.Position))
+                    {
+                        // Drop
+                        if (_contextMenuItem != null)
+                        {
+                            _player.Inventory.RemoveItem((int)_contextMenuItemGridPos.X, (int)_contextMenuItemGridPos.Y);
+                            // Spawn item entity at player position
+                            // Offset slightly so it's not directly under player
+                            Vector2 dropPos = _player.Position + new Vector2(0, 32);
+                            _entityManager.AddEntity(new Entity(dropPos, _contextMenuItem, true, true));
                         }
                         _showInventoryContextMenu = false;
                     }
@@ -855,8 +874,20 @@ namespace AntigravityMoon
             // Draw Inventory Context Menu
             if (_showInventoryContextMenu)
             {
-                _spriteBatch.Draw(_pixelTexture, new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, 60, 25), Color.White);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "EAT", new Vector2(_contextMenuPos.X + 5, _contextMenuPos.Y + 5), Color.Black, 2);
+                bool isFood = _contextMenuItem == "Corn";
+                int menuHeight = isFood ? 50 : 25;
+                
+                _spriteBatch.Draw(_pixelTexture, new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, 60, menuHeight), Color.White);
+                
+                if (isFood)
+                {
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "EAT", new Vector2(_contextMenuPos.X + 5, _contextMenuPos.Y + 5), Color.Black, 2);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "DROP", new Vector2(_contextMenuPos.X + 5, _contextMenuPos.Y + 30), Color.Red, 2);
+                }
+                else
+                {
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "DROP", new Vector2(_contextMenuPos.X + 5, _contextMenuPos.Y + 5), Color.Red, 2);
+                }
             }
 
             // Draw Death Screen
@@ -874,7 +905,7 @@ namespace AntigravityMoon
                         causeMessage = "YOUR OXYJIN DEPLETED - IF YOU KNOW, YOU KNOW...";
                         break;
                     case DeathCause.Hunger:
-                        causeMessage = "YOU STARVED TO DEATH - YOU SHOULD HAVE EATEN THAT CRISPY BEEF";
+                        causeMessage = "YOU STARVED TO DEATH - YOU SHOULD HAVE EATEN THAT CRISPY CORN";
                         break;
                     case DeathCause.Alien:
                         causeMessage = "YOU WERE KILLED BY A METRO ALIEN - THANKS OLLIE...";
