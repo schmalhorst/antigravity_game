@@ -64,8 +64,8 @@ dotnet run
 ## Credits
 
 **Development**: Created with Antigravity AI
-**Creative Direction**: John Schmalhorst & Kids
-**Assets & Design Input**: Schmalhorst Family
+**Creative Direction**: SCHMALLY & Kids
+**Assets & Design Input**: The SCHMALLY Family
 **Framework**: MonoGame
 
 ## License
@@ -74,4 +74,4 @@ This project is a personal/educational project created with AI assistance.
 
 ---
 
-*Built with ❤️ and AI by the Schmalhorst family*
+*Built with ❤️ and AI by the SCHMALLY family*
