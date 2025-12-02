@@ -92,6 +92,7 @@ namespace AntigravityMoon
         // UI State
         private bool _showWorkbenchMenu = false;
         private bool _showGreenhouseMenu = false;
+        private bool _showSpaceshipMenu = false;
         private Structure _interactedStructure;
         
         // Context Menu
@@ -217,6 +218,7 @@ namespace AntigravityMoon
                 _showInventory = !_showInventory;
                 _showWorkbenchMenu = false;
                 _showGreenhouseMenu = false;
+                _showSpaceshipMenu = false;
                 _showInventoryContextMenu = false;
             }
 
@@ -421,8 +423,9 @@ namespace AntigravityMoon
                                 }
                                 else if (s.Type == "Spaceship")
                                 {
-                                    // Refill Oxygen
-                                    _player.RefillOxygen();
+                                    // Open Spaceship Menu
+                                    _showSpaceshipMenu = true;
+                                    _interactedStructure = s;
                                 }
                             }
                         }
@@ -469,7 +472,45 @@ namespace AntigravityMoon
                     }
                 }
 
-                // Update Aliens
+                if (_showSpaceshipMenu)
+            {
+                if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
+                {
+                    // Menu Position (Centered)
+                    int menuWidth = 300;
+                    int menuHeight = 150;
+                    int menuX = (1920 - menuWidth) / 2;
+                    int menuY = (1080 - menuHeight) / 2;
+                    
+                    Rectangle menuRect = new Rectangle(menuX, menuY, menuWidth, menuHeight);
+                    
+                    // Refill Button
+                    Rectangle refillBtn = new Rectangle(menuX + 50, menuY + 60, 200, 40);
+                    // Exit Button
+                    Rectangle exitBtn = new Rectangle(menuX + 250, menuY + 10, 40, 40);
+                    
+                    if (refillBtn.Contains(currentMouseState.Position))
+                    {
+                        // Cost: 2 Rocks
+                        if (_player.Inventory.RemoveItems("Rock", 2))
+                        {
+                            _player.RefillOxygen();
+                            _showSpaceshipMenu = false;
+                        }
+                    }
+                    else if (exitBtn.Contains(currentMouseState.Position))
+                    {
+                        _showSpaceshipMenu = false;
+                    }
+                    else if (!menuRect.Contains(currentMouseState.Position))
+                    {
+                        _showSpaceshipMenu = false;
+                    }
+                }
+                return; // Block other input
+            }
+
+            // Update Aliens
                 for (int i = _aliens.Count - 1; i >= 0; i--)
                 {
                     _aliens[i].Update(dt, _player);
@@ -870,6 +911,39 @@ namespace AntigravityMoon
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "DELETE", new Vector2(_editContextMenuPos.X + 5, _editContextMenuPos.Y + 25), Color.Red, 1);
             }
 
+
+            // Draw Spaceship Menu
+            if (_showSpaceshipMenu)
+            {
+                int menuWidth = 300;
+                int menuHeight = 150;
+                int menuX = (1920 - menuWidth) / 2;
+                int menuY = (1080 - menuHeight) / 2;
+                
+                // Background
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(menuX, menuY, menuWidth, menuHeight), Color.DarkGray);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(menuX + 5, menuY + 5, menuWidth - 10, menuHeight - 10), Color.Black);
+                
+                // Title
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "SPACESHIP", new Vector2(menuX + 100, menuY + 20), Color.White, 2);
+                
+                // Exit Button
+                Rectangle exitBtn = new Rectangle(menuX + 250, menuY + 10, 40, 40);
+                _spriteBatch.Draw(_pixelTexture, exitBtn, Color.Red);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "X", new Vector2(exitBtn.X + 12, exitBtn.Y + 10), Color.White, 2);
+
+                // Refill Button
+                bool canAfford = _player.Inventory.CountItem("Rock") >= 2;
+                Color btnColor = canAfford ? Color.Green : Color.Gray;
+                Rectangle refillBtn = new Rectangle(menuX + 50, menuY + 60, 200, 40);
+                
+                _spriteBatch.Draw(_pixelTexture, refillBtn, btnColor);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "REFILL OXYJIN", new Vector2(refillBtn.X + 20, refillBtn.Y + 10), Color.Black, 2);
+                
+                // Cost
+                Color costColor = canAfford ? Color.White : Color.Red;
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "COST: 2 ROCKS", new Vector2(menuX + 80, menuY + 110), costColor, 2);
+            }
 
             // Draw Inventory Context Menu
             if (_showInventoryContextMenu)
