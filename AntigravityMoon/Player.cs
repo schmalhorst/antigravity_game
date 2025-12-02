@@ -81,7 +81,7 @@ namespace AntigravityMoon
             }
         }
 
-        public void Update(GameTime gameTime, EntityManager entityManager, Camera camera)
+        public void Update(GameTime gameTime, EntityManager entityManager, Camera camera, TileMap tileMap)
         {
             var kstate = Keyboard.GetState();
             var mstate = Mouse.GetState();
@@ -127,22 +127,50 @@ namespace AntigravityMoon
                 // Collision Detection
                 bool collision = false;
                 Rectangle playerRect = new Rectangle((int)nextPos.X, (int)nextPos.Y, 32, 32);
-                foreach (var entity in entityManager.GetEntities())
+                // Check for crater tiles (type 2) using proper rectangle intersection
+                // Player is 32x32, tiles are 48x48
+                int minTileX = (int)Math.Floor(nextPos.X / TileMap.TileSize);
+                int maxTileX = (int)Math.Floor((nextPos.X + 31) / TileMap.TileSize);
+                int minTileY = (int)Math.Floor(nextPos.Y / TileMap.TileSize);
+                int maxTileY = (int)Math.Floor((nextPos.Y + 31) / TileMap.TileSize);
+                
+                for (int tx = minTileX; tx <= maxTileX && !collision; tx++)
                 {
-                    if (entity.IsSolid)
+                    for (int ty = minTileY; ty <= maxTileY && !collision; ty++)
                     {
-                        Rectangle entityRect = new Rectangle((int)entity.Position.X, (int)entity.Position.Y, 32, 32);
-                        // Structure might be bigger
-                        if (entity is Structure s)
+                        int tileType = tileMap.GetTile(tx, ty);
+                        if (tileType == 2) // Crater
                         {
-                            entityRect.Width = s.Width;
-                            entityRect.Height = s.Height;
+                            // Check actual rectangle intersection
+                            Rectangle craterRect = new Rectangle(tx * TileMap.TileSize, ty * TileMap.TileSize, TileMap.TileSize, TileMap.TileSize);
+                            if (playerRect.Intersects(craterRect))
+                            {
+                                collision = true;
+                            }
                         }
-
-                        if (playerRect.Intersects(entityRect))
+                    }
+                }
+                
+                // Check entity collision
+                if (!collision)
+                {
+                    foreach (var entity in entityManager.GetEntities())
+                    {
+                        if (entity.IsSolid)
                         {
-                            collision = true;
-                            break;
+                            Rectangle entityRect = new Rectangle((int)entity.Position.X, (int)entity.Position.Y, 32, 32);
+                            // Structure might be bigger
+                            if (entity is Structure s)
+                            {
+                                entityRect.Width = s.Width;
+                                entityRect.Height = s.Height;
+                            }
+
+                            if (playerRect.Intersects(entityRect))
+                            {
+                                collision = true;
+                                break;
+                            }
                         }
                     }
                 }

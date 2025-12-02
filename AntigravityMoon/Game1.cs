@@ -32,9 +32,9 @@ namespace AntigravityMoon
         protected override void Initialize()
         {
             _camera = new Camera(GraphicsDevice.Viewport);
-            _tileMap = new TileMap(60, 34); // Fits 1920x1080 roughly with 32px tiles
+            _tileMap = new TileMap(); // Infinite map
             _entityManager = new EntityManager();
-            _player = new Player(new Vector2(400, 304));
+            _player = new Player(Vector2.Zero); // Start at world origin
 
             // Add some test entities
             _entityManager.AddEntity(new Entity(new Vector2(300, 300), "Rock", true, true, true)); // Rock is harvestable and solid
@@ -137,6 +137,12 @@ namespace AntigravityMoon
         }
         private List<Laser> _lasers = new List<Laser>();
 
+        // Minimap
+        private bool _showMinimap = true;
+        private int _minimapSize = 1; // 1 = Small, 2 = Large
+        private const int MinimapScaleSmall = 4;
+        private const int MinimapScaleLarge = 8;
+
         private Vector2 GetInventoryPosition()
         {
             int cellSize = 40;
@@ -232,6 +238,16 @@ namespace AntigravityMoon
                 _showSpaceshipMenu = false;
                 _showInventoryContextMenu = false;
             }
+
+            // Minimap Toggle
+            if (currentKeyboardState.IsKeyDown(Keys.M) && !_prevKeyboardState.IsKeyDown(Keys.M))
+            {
+                _minimapSize++;
+                if (_minimapSize > 2) _minimapSize = 1;
+            }
+
+            // Update Exploration
+            _tileMap.Explore(_player.Position, 300f); // 300px radius
 
             // Inventory Context Menu Logic
             if (_showInventory && _showInventoryContextMenu)
@@ -392,7 +408,7 @@ namespace AntigravityMoon
             }
             else if (!_showInventory)
             {
-                _player.Update(gameTime, _entityManager, _camera);
+                _player.Update(gameTime, _entityManager, _camera, _tileMap);
                 _camera.Position = _player.Position; // Follow player
 
                 // Check for interactions
@@ -727,7 +743,14 @@ namespace AntigravityMoon
             // Apply Camera Transform
             _spriteBatch.Begin(transformMatrix: _camera.GetViewMatrix(), samplerState: SamplerState.PointClamp);
 
-            _tileMap.Draw(_spriteBatch, _textures.ContainsKey("moon_ground") ? _textures["moon_ground"] : _pixelTexture);
+    // Calculate camera view rectangle for culling
+    Rectangle cameraRect = new Rectangle(
+        (int)(_camera.Position.X - 960),
+        (int)(_camera.Position.Y - 540),
+        1920,
+        1080
+    );
+    _tileMap.Draw(_spriteBatch, _textures.ContainsKey("moon_ground") ? _textures["moon_ground"] : _pixelTexture, cameraRect);
             
             if (_currentGameState == GameState.Intro)
             {
@@ -785,8 +808,8 @@ namespace AntigravityMoon
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 210, (int)(_player.Oxygen * 4), 40), Color.CornflowerBlue);
 
             // Draw Control Labels
-            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS B TO BUILD", new Vector2(1920 - 400, 20), Color.White, 2);
-            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS I FOR INVENTORY", new Vector2(1920 - 400, 60), Color.White, 2);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS B TO BUILD", new Vector2(1920 - 600, 20), Color.White, 2);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS I FOR INVENTORY", new Vector2(1920 - 600, 60), Color.White, 2);
 
             // Draw Menus
             if (_showWorkbenchMenu)
@@ -1030,6 +1053,49 @@ namespace AntigravityMoon
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "RESPAWN", new Vector2(respawnBtn.X + 50, respawnBtn.Y + 20), Color.Black, 3);
             }
 
+            _spriteBatch.End();
+
+            // Draw Minimap (UI Layer)
+            _spriteBatch.Begin();
+            if (_showMinimap)
+            {
+                int scale = _minimapSize == 1 ? MinimapScaleSmall : MinimapScaleLarge;
+                int mapRange = 30; // Show 60x60 tiles (30 in each direction)
+                int mapWidth = mapRange * 2 * scale;
+                int mapHeight = mapRange * 2 * scale;
+                int mapX = 1920 - mapWidth - 20;
+                int mapY = 20;
+
+                // Background
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(mapX - 2, mapY - 2, mapWidth + 4, mapHeight + 4), Color.Black * 0.5f);
+
+                // Draw Tiles around player
+                int playerTileX = (int)Math.Floor(_player.Position.X / TileMap.TileSize);
+                int playerTileY = (int)Math.Floor(_player.Position.Y / TileMap.TileSize);
+                
+                for (int x = playerTileX - mapRange; x < playerTileX + mapRange; x++)
+                {
+                    for (int y = playerTileY - mapRange; y < playerTileY + mapRange; y++)
+                    {
+                        if (_tileMap.IsExplored(x, y))
+                        {
+                            int tileType = _tileMap.GetTile(x, y);
+                            Color color = Color.Gray;
+                            if (tileType == 1) color = Color.DarkGray; // Rock
+                            else if (tileType == 2) color = Color.Black; // Crater
+                            
+                            int screenX = mapX + (x - (playerTileX - mapRange)) * scale;
+                            int screenY = mapY + (y - (playerTileY - mapRange)) * scale;
+                            _spriteBatch.Draw(_pixelTexture, new Rectangle(screenX, screenY, scale, scale), color);
+                        }
+                    }
+                }
+
+                // Draw Player (center of minimap)
+                int playerScreenX = mapX + mapRange * scale;
+                int playerScreenY = mapY + mapRange * scale;
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(playerScreenX, playerScreenY, scale, scale), Color.Red);
+            }
             _spriteBatch.End();
             }
 

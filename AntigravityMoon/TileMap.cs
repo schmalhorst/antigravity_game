@@ -1,51 +1,159 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
+using System.Collections.Generic;
 
 namespace AntigravityMoon
 {
     public class TileMap
     {
         public const int TileSize = 48;
-        public int Width { get; private set; }
-        public int Height { get; private set; }
-        private int[,] _tiles;
+        public const int ChunkSize = 16; // 16x16 tiles per chunk
+        
+        private class Chunk
+        {
+            public int[,] Tiles;
+            public bool[,] Explored;
+            
+            public Chunk()
+            {
+                Tiles = new int[ChunkSize, ChunkSize];
+                Explored = new bool[ChunkSize, ChunkSize];
+            }
+        }
+        
+        private Dictionary<Point, Chunk> _chunks = new Dictionary<Point, Chunk>();
         private Random _random;
 
-        public TileMap(int width, int height)
+        public TileMap()
         {
-            Width = width;
-            Height = height;
-            _tiles = new int[width, height];
             _random = new Random();
-            Generate();
         }
 
-        private void Generate()
+        private Point GetChunkCoord(int tileX, int tileY)
         {
-            for (int x = 0; x < Width; x++)
+            return new Point(
+                tileX >= 0 ? tileX / ChunkSize : (tileX - ChunkSize + 1) / ChunkSize,
+                tileY >= 0 ? tileY / ChunkSize : (tileY - ChunkSize + 1) / ChunkSize
+            );
+        }
+
+        private Chunk GetOrGenerateChunk(Point chunkCoord)
+        {
+            if (!_chunks.ContainsKey(chunkCoord))
             {
-                for (int y = 0; y < Height; y++)
+                _chunks[chunkCoord] = GenerateChunk(chunkCoord);
+            }
+            return _chunks[chunkCoord];
+        }
+
+        private Chunk GenerateChunk(Point chunkCoord)
+        {
+            Chunk chunk = new Chunk();
+            
+            // Use chunk coordinates as seed for deterministic generation
+            int seed = chunkCoord.X * 1000 + chunkCoord.Y;
+            Random chunkRandom = new Random(seed);
+            
+            for (int x = 0; x < ChunkSize; x++)
+            {
+                for (int y = 0; y < ChunkSize; y++)
                 {
-                    // 0 = Dust, 1 = Rock (10% chance)
-                    _tiles[x, y] = _random.NextDouble() < 0.1 ? 1 : 0;
+                    double roll = chunkRandom.NextDouble();
+                    if (roll < 0.05) chunk.Tiles[x, y] = 2; // 5% Crater
+                    else if (roll < 0.15) chunk.Tiles[x, y] = 1; // 10% Rock
+                    else chunk.Tiles[x, y] = 0; // 85% Dust
+                }
+            }
+            
+            // Clear starting area if this is the center chunk
+            if (chunkCoord.X == 0 && chunkCoord.Y == 0)
+            {
+                for (int x = 0; x < ChunkSize; x++)
+                {
+                    for (int y = 0; y < ChunkSize; y++)
+                    {
+                        chunk.Tiles[x, y] = 0;
+                    }
+                }
+            }
+            
+            return chunk;
+        }
+
+        public void Explore(Vector2 position, float radius)
+        {
+            int centerTileX = (int)Math.Floor(position.X / TileSize);
+            int centerTileY = (int)Math.Floor(position.Y / TileSize);
+            int radiusInTiles = (int)(radius / TileSize);
+
+            for (int x = centerTileX - radiusInTiles; x <= centerTileX + radiusInTiles; x++)
+            {
+                for (int y = centerTileY - radiusInTiles; y <= centerTileY + radiusInTiles; y++)
+                {
+                    // Simple distance check
+                    if (Vector2.Distance(new Vector2(x * TileSize, y * TileSize), position) <= radius)
+                    {
+                        Point chunkCoord = GetChunkCoord(x, y);
+                        Chunk chunk = GetOrGenerateChunk(chunkCoord);
+                        
+                        int localX = x >= 0 ? x % ChunkSize : (ChunkSize - 1) - ((-x - 1) % ChunkSize);
+                        int localY = y >= 0 ? y % ChunkSize : (ChunkSize - 1) - ((-y - 1) % ChunkSize);
+                        
+                        chunk.Explored[localX, localY] = true;
+                    }
                 }
             }
         }
 
         public int GetTile(int x, int y)
         {
-            if (x < 0 || x >= Width || y < 0 || y >= Height) return 1; // Out of bounds is rock
-            return _tiles[x, y];
+            Point chunkCoord = GetChunkCoord(x, y);
+            Chunk chunk = GetOrGenerateChunk(chunkCoord);
+            
+            int localX = x >= 0 ? x % ChunkSize : (ChunkSize - 1) - ((-x - 1) % ChunkSize);
+            int localY = y >= 0 ? y % ChunkSize : (ChunkSize - 1) - ((-y - 1) % ChunkSize);
+            
+            return chunk.Tiles[localX, localY];
         }
 
-        public void Draw(SpriteBatch spriteBatch, Texture2D texture)
+        public bool IsExplored(int x, int y)
         {
-            for (int x = 0; x < Width; x++)
+            Point chunkCoord = GetChunkCoord(x, y);
+            if (!_chunks.ContainsKey(chunkCoord)) return false;
+            
+            Chunk chunk = _chunks[chunkCoord];
+            int localX = x >= 0 ? x % ChunkSize : (ChunkSize - 1) - ((-x - 1) % ChunkSize);
+            int localY = y >= 0 ? y % ChunkSize : (ChunkSize - 1) - ((-y - 1) % ChunkSize);
+            
+            return chunk.Explored[localX, localY];
+        }
+
+        public void Draw(SpriteBatch spriteBatch, Texture2D texture, Rectangle cameraViewRect)
+        {
+            // Calculate tile range visible in camera
+            int startTileX = (int)Math.Floor((float)cameraViewRect.Left / TileSize) - 1;
+            int endTileX = (int)Math.Floor((float)cameraViewRect.Right / TileSize) + 1;
+            int startTileY = (int)Math.Floor((float)cameraViewRect.Top / TileSize) - 1;
+            int endTileY = (int)Math.Floor((float)cameraViewRect.Bottom / TileSize) + 1;
+
+            for (int x = startTileX; x <= endTileX; x++)
             {
-                for (int y = 0; y < Height; y++)
+                for (int y = startTileY; y <= endTileY; y++)
                 {
-                    Color color = _tiles[x, y] == 0 ? Color.Gray : Color.DarkGray;
+                    int tileType = GetTile(x, y);
+                    bool explored = IsExplored(x, y);
+                    
+                    Color color = Color.White;
+                    if (tileType == 0) color = Color.Gray;
+                    else if (tileType == 1) color = Color.DarkGray;
+                    else if (tileType == 2) color = Color.Black;
+
+                    if (!explored)
+                    {
+                        color = Color.Multiply(color, 0.3f); // Darken unexplored areas
+                    }
+
                     spriteBatch.Draw(texture, new Rectangle(x * TileSize, y * TileSize, TileSize, TileSize), color);
                 }
             }
