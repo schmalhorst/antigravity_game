@@ -144,6 +144,17 @@ namespace AntigravityMoon
         }
         private List<Laser> _lasers = new List<Laser>();
 
+        // Electricity Particle System (for alien deaths)
+        private struct ElectricityParticle
+        {
+            public Vector2 Start;
+            public Vector2 End;
+            public float Duration;
+            public float MaxDuration;
+            public Vector2 RandomOffset; // For flickering effect
+        }
+        private List<ElectricityParticle> _electricityParticles = new List<ElectricityParticle>();
+
         // Minimap
         private bool _showMinimap = true;
         private int _minimapSize = 1; // 0=Hidden, 1=Small, 2=Large
@@ -760,6 +771,29 @@ namespace AntigravityMoon
                     _aliens[i].Update(dt, _player);
                     if (_aliens[i].IsDead)
                     {
+                        // Spawn Electricity Particles
+                        Vector2 deathPos = _aliens[i].Position + new Vector2(64, 32); // Center of alien
+                        int particleCount = _random.Next(8, 13); // 8-12 particles
+                        
+                        for (int p = 0; p < particleCount; p++)
+                        {
+                            // Random direction
+                            float angle = (float)(_random.NextDouble() * Math.PI * 2);
+                            float length = (float)(_random.NextDouble() * 50 + 30); // 30-80 pixels
+                            
+                            Vector2 direction = new Vector2((float)Math.Cos(angle), (float)Math.Sin(angle));
+                            Vector2 endPos = deathPos + direction * length;
+                            
+                            _electricityParticles.Add(new ElectricityParticle
+                            {
+                                Start = deathPos,
+                                End = endPos,
+                                Duration = (float)(_random.NextDouble() * 0.2 + 0.3), // 0.3-0.5 seconds
+                                MaxDuration = 0.5f,
+                                RandomOffset = Vector2.Zero
+                            });
+                        }
+                        
                         _aliens.RemoveAt(i);
                     }
                 }
@@ -773,6 +807,23 @@ namespace AntigravityMoon
                 if (l.Duration <= 0)
                 {
                     _lasers.RemoveAt(i);
+                }
+            }
+
+            // Update Electricity Particles
+            for (int i = _electricityParticles.Count - 1; i >= 0; i--)
+            {
+                ElectricityParticle p = _electricityParticles[i];
+                p.Duration -= dt;
+                // Update random offset for flickering
+                p.RandomOffset = new Vector2(
+                    (float)(_random.NextDouble() * 4 - 2),
+                    (float)(_random.NextDouble() * 4 - 2)
+                );
+                _electricityParticles[i] = p;
+                if (p.Duration <= 0)
+                {
+                    _electricityParticles.RemoveAt(i);
                 }
             }          }
             }
@@ -1006,6 +1057,15 @@ namespace AntigravityMoon
                 {
                     float alpha = laser.Duration / laser.MaxDuration;
                     DrawLine(_spriteBatch, _pixelTexture, laser.Start, laser.End, Color.Cyan * alpha, 2);
+                }
+
+                // Draw Electricity Particles
+                foreach (var particle in _electricityParticles)
+                {
+                    float alpha = particle.Duration / particle.MaxDuration;
+                    // Apply random offset for flickering effect
+                    Vector2 offsetEnd = particle.End + particle.RandomOffset;
+                    DrawLine(_spriteBatch, _pixelTexture, particle.Start, offsetEnd, Color.Yellow * alpha, 3);
                 }
 
                 _player.Draw(_spriteBatch, _textures.ContainsKey("astronaut") ? _textures["astronaut"] : _pixelTexture, _textures);
