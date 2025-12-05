@@ -493,14 +493,17 @@ namespace AntigravityMoon
                     
                     if (collectAllBtn.Contains(currentMouseState.Position))
                     {
-                        // Check if player has space for all items
+                        // Check if player has space for all items (counting stacks)
                         int totalItems = 0;
                         for (int y = 0; y < _interactedBackpack.Storage.Rows; y++)
                         {
                             for (int x = 0; x < _interactedBackpack.Storage.Cols; x++)
                             {
                                 if (_interactedBackpack.Storage.GetItem(x, y) != null)
-                                    totalItems++;
+                                {
+                                    // Count all items in the stack, not just the slot
+                                    totalItems += _interactedBackpack.Storage.GetItemCount(x, y);
+                                }
                             }
                         }
                         
@@ -516,7 +519,7 @@ namespace AntigravityMoon
                         
                         if (emptySlots >= totalItems)
                         {
-                            // Transfer all items
+                            // Transfer all items including full stacks
                             for (int y = 0; y < _interactedBackpack.Storage.Rows; y++)
                             {
                                 for (int x = 0; x < _interactedBackpack.Storage.Cols; x++)
@@ -524,8 +527,17 @@ namespace AntigravityMoon
                                     string item = _interactedBackpack.Storage.GetItem(x, y);
                                     if (item != null)
                                     {
-                                        _player.Inventory.AddItem(item);
-                                        _interactedBackpack.Storage.RemoveItem(x, y);
+                                        // Transfer entire stack
+                                        int stackCount = _interactedBackpack.Storage.GetItemCount(x, y);
+                                        for (int i = 0; i < stackCount; i++)
+                                        {
+                                            _player.Inventory.AddItem(item);
+                                        }
+                                        // Remove entire stack from backpack
+                                        for (int i = 0; i < stackCount; i++)
+                                        {
+                                            _interactedBackpack.Storage.RemoveItem(x, y);
+                                        }
                                     }
                                 }
                             }
@@ -620,10 +632,13 @@ namespace AntigravityMoon
                     }
                 }
             }
-            else if (!_showInventory)
+            // Game World Updates (Run even if inventory is open)
+            _player.Update(gameTime, _entityManager, _camera, _tileMap, !_showInventory);
+            _camera.Position = _player.Position; // Follow player
+
+            if (!_showInventory)
             {
-                _player.Update(gameTime, _entityManager, _camera, _tileMap);
-                _camera.Position = _player.Position; // Follow player
+
 
                 // Check for interactions
                 if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
@@ -661,17 +676,20 @@ namespace AntigravityMoon
                                 {
                                     _showWorkbenchMenu = true;
                                     _interactedStructure = s;
+                                    _showInventory = false;
                                 }
                                 else if (s.Type == "Greenhouse")
                                 {
                                     _showGreenhouseMenu = true;
                                     _interactedStructure = s;
+                                    _showInventory = false;
                                 }
                                 else if (s.Type == "Spaceship")
                                 {
                                     // Open Spaceship Menu
                                     _showSpaceshipMenu = true;
                                     _interactedStructure = s;
+                                    _showInventory = false;
                                 }
                             }
                         }
@@ -696,6 +714,7 @@ namespace AntigravityMoon
                         _player.Eat(100f);
                     }
                 }
+            }
 
                 // Update Structures
                 foreach (var entity in _entityManager.GetEntities())
@@ -825,7 +844,7 @@ namespace AntigravityMoon
                 {
                     _electricityParticles.RemoveAt(i);
                 }
-            }          }
+            }
             }
 
 

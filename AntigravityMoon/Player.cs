@@ -81,7 +81,7 @@ namespace AntigravityMoon
             }
         }
 
-        public void Update(GameTime gameTime, EntityManager entityManager, Camera camera, TileMap tileMap)
+        public void Update(GameTime gameTime, EntityManager entityManager, Camera camera, TileMap tileMap, bool allowInput)
         {
             var kstate = Keyboard.GetState();
             var mstate = Mouse.GetState();
@@ -185,18 +185,21 @@ namespace AntigravityMoon
             Vector2 mousePos = camera.ScreenToWorld(new Vector2(mstate.X, mstate.Y));
             _currentMouseWorldPos = mousePos;
 
-            if (IsPlacing)
+            if (allowInput)
             {
-                HandlePlacement(mstate, entityManager, mousePos);
-            }
-            else if (_movingStructure != null)
-            {
-                HandleMoving(mstate, mousePos);
-            }
-            else
-            {
-                // Antigravity Laser Logic (Harvesting)
-                HandleInput(mstate, entityManager, mousePos);
+                if (IsPlacing)
+                {
+                    HandlePlacement(mstate, entityManager, mousePos);
+                }
+                else if (_movingStructure != null)
+                {
+                    HandleMoving(mstate, mousePos);
+                }
+                else
+                {
+                    // Antigravity Laser Logic (Harvesting)
+                    HandleInput(mstate, entityManager, mousePos);
+                }
             }
             
             _prevMouseState = mstate;
