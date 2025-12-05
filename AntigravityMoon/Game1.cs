@@ -27,6 +27,7 @@ namespace AntigravityMoon
             _graphics.ApplyChanges();
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
+            Window.AllowUserResizing = true;
         }
 
         protected override void Initialize()
@@ -40,6 +41,14 @@ namespace AntigravityMoon
             _tileMap.OnSpawnEntity += (position, entityType) =>
             {
                 _entityManager.AddEntity(new Entity(position, entityType, true, true, true));
+            };
+
+            Window.ClientSizeChanged += (s, e) =>
+            {
+                 if (_camera != null)
+                 {
+                     _camera.UpdateViewport(GraphicsDevice.Viewport);
+                 }
             };
 
             base.Initialize();
@@ -182,8 +191,8 @@ namespace AntigravityMoon
             int width = _player.Inventory.Cols * (cellSize + padding) + padding;
             int height = _player.Inventory.Rows * (cellSize + padding) + padding;
             
-            int x = (1920 - width) / 2; // Centered
-            int y = 1080 - height - 20; // 20px from bottom
+            int x = (GraphicsDevice.Viewport.Width - width) / 2; // Centered
+            int y = GraphicsDevice.Viewport.Height - height - 20; // 20px from bottom
             
             return new Vector2(x, y);
         }
@@ -196,6 +205,12 @@ namespace AntigravityMoon
 
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || currentKeyboardState.IsKeyDown(Keys.Escape))
                 Exit();
+
+            // Fullscreen Toggle
+            if (currentKeyboardState.IsKeyDown(Keys.F11) && !_prevKeyboardState.IsKeyDown(Keys.F11))
+            {
+                _graphics.ToggleFullScreen();
+            }
 
             if (_currentGameState == GameState.StartMenu)
             {
@@ -244,7 +259,7 @@ namespace AntigravityMoon
                 if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
                 {
                     // Respawn button: 960-150, 540+50, 300, 60
-                    Rectangle respawnBtn = new Rectangle(960 - 150, 540 + 50, 300, 60);
+                    Rectangle respawnBtn = new Rectangle(GraphicsDevice.Viewport.Width / 2 - 150, GraphicsDevice.Viewport.Height / 2 + 50, 300, 60);
                     if (respawnBtn.Contains(currentMouseState.Position))
                     {
                         // Drop Backpack before respawning
@@ -336,15 +351,19 @@ namespace AntigravityMoon
             }
             else if (_showInventory)
             {
+                // Calculate Inventory Rect for input detection
+                Vector2 invPos = GetInventoryPosition();
+                int cellSize = 40;
+                int padding = 5;
+                int invWidth = _player.Inventory.Cols * (cellSize + padding) + padding;
+                int invHeight = _player.Inventory.Rows * (cellSize + padding) + padding;
+                Rectangle inventoryRect = new Rectangle((int)invPos.X, (int)invPos.Y, invWidth, invHeight);
+
                 // Right Click on Item to open Context Menu
                 if (currentMouseState.RightButton == ButtonState.Pressed && _prevMouseState.RightButton == ButtonState.Released)
                 {
-                    // Calculate grid pos
-                    Vector2 invPos = GetInventoryPosition();
                     int startX = (int)invPos.X;
                     int startY = (int)invPos.Y;
-                    int cellSize = 40;
-                    int padding = 5;
                     
                     int mx = currentMouseState.X;
                     int my = currentMouseState.Y;
@@ -366,6 +385,15 @@ namespace AntigravityMoon
                             }
                         }
                     }
+                }
+                
+                // Left Click Outside to Close
+                if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
+                {
+                   if (!inventoryRect.Contains(currentMouseState.Position))
+                   {
+                       _showInventory = false;
+                   }
                 }
             }
 
@@ -456,7 +484,7 @@ namespace AntigravityMoon
                     // Right Click to Loot Item (open context menu)
                     if (currentMouseState.RightButton == ButtonState.Pressed && _prevMouseState.RightButton == ButtonState.Released)
                     {
-                        Vector2 lootPos = new Vector2(1920 / 2 - 200, 1080 / 2 - 150);
+                        Vector2 lootPos = new Vector2(GraphicsDevice.Viewport.Width / 2 - 200, GraphicsDevice.Viewport.Height / 2 - 150);
                         int startX = (int)lootPos.X;
                         int startY = (int)lootPos.Y;
                         int cellSize = 40;
@@ -489,7 +517,7 @@ namespace AntigravityMoon
                 // Handle Collect All button
                 if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
                 {
-                    Rectangle collectAllBtn = new Rectangle(1920 / 2 + 220, 1080 / 2 - 150, 150, 40);
+                    Rectangle collectAllBtn = new Rectangle(GraphicsDevice.Viewport.Width / 2 + 220, GraphicsDevice.Viewport.Height / 2 - 150, 150, 40);
                     
                     if (collectAllBtn.Contains(currentMouseState.Position))
                     {
@@ -699,7 +727,7 @@ namespace AntigravityMoon
                              {
                                  _showLootMenu = true;
                                  _interactedBackpack = bp;
-                                 _showInventory = true; // Open player inventory too for transfer
+                                 _showInventory = false; // Close player inventory for consistency
                              }
                         }
                     }
@@ -753,8 +781,8 @@ namespace AntigravityMoon
                     // Menu Position (Centered)
                     int menuWidth = 300;
                     int menuHeight = 150;
-                    int menuX = (1920 - menuWidth) / 2;
-                    int menuY = (1080 - menuHeight) / 2;
+                    int menuX = (GraphicsDevice.Viewport.Width - menuWidth) / 2;
+                    int menuY = (GraphicsDevice.Viewport.Height - menuHeight) / 2;
                     
                     Rectangle menuRect = new Rectangle(menuX, menuY, menuWidth, menuHeight);
                     
@@ -1118,16 +1146,17 @@ namespace AntigravityMoon
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 210, (int)(_player.Oxygen * 4), 40), Color.CornflowerBlue);
 
             // Draw Control Labels
-            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS B TO BUILD", new Vector2(1920 - 600, 20), Color.White, 2);
-            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS I FOR INVENTORY", new Vector2(1920 - 600, 60), Color.White, 2);
+            // Draw Control Labels (Centered)
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS B TO BUILD", new Vector2(GraphicsDevice.Viewport.Width / 2 - 100, 20), Color.White, 2);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS I FOR INVENTORY", new Vector2(GraphicsDevice.Viewport.Width / 2 - 140, 60), Color.White, 2);
 
             // Draw Menus
             if (_showWorkbenchMenu)
             {
-                // Background (Centered on 1920x1080)
-                // 1920/2 = 960, 1080/2 = 540. Rect 400x300?
-                // Let's make it bigger: 600x400
-                Rectangle menuRect = new Rectangle(960 - 300, 540 - 200, 600, 400);
+                // Background (Centered)
+                int wbWidth = 600;
+                int wbHeight = 400;
+                Rectangle menuRect = new Rectangle((GraphicsDevice.Viewport.Width - wbWidth) / 2, (GraphicsDevice.Viewport.Height - wbHeight) / 2, wbWidth, wbHeight);
                 _spriteBatch.Draw(_pixelTexture, menuRect, Color.DarkGray);
                 
                 // Close Button
@@ -1217,7 +1246,7 @@ namespace AntigravityMoon
                 int menuWidth = 60;
                 int menuHeight = 6 * 50 + 7 * 5; // 6 slots * 50px + padding
                 int menuX = 10;
-                int menuY = (1080 - menuHeight) / 2;
+                int menuY = (GraphicsDevice.Viewport.Height - menuHeight) / 2;
                 
                 _spriteBatch.Draw(_pixelTexture, new Rectangle(menuX, menuY, menuWidth, menuHeight), Color.DarkGray);
 
@@ -1288,8 +1317,8 @@ namespace AntigravityMoon
             {
                 int menuWidth = 300;
                 int menuHeight = 150;
-                int menuX = (1920 - menuWidth) / 2;
-                int menuY = (1080 - menuHeight) / 2;
+                int menuX = (GraphicsDevice.Viewport.Width - menuWidth) / 2;
+                int menuY = (GraphicsDevice.Viewport.Height - menuHeight) / 2;
                 
                 // Background
                 _spriteBatch.Draw(_pixelTexture, new Rectangle(menuX, menuY, menuWidth, menuHeight), Color.DarkGray);
@@ -1320,13 +1349,13 @@ namespace AntigravityMoon
             if (_showLootMenu && _interactedBackpack != null)
             {
                 // Draw Backpack Inventory
-                _interactedBackpack.Storage.Draw(_spriteBatch, _pixelTexture, _textures, new Vector2(1920 / 2 - 200, 1080 / 2 - 150));
+                _interactedBackpack.Storage.Draw(_spriteBatch, _pixelTexture, _textures, new Vector2(GraphicsDevice.Viewport.Width / 2 - 200, GraphicsDevice.Viewport.Height / 2 - 150));
                 
                 // Draw Title
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "LOOT BACKPACK", new Vector2(1920 / 2 - 100, 1080 / 2 - 200), Color.White, 2);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "LOOT BACKPACK", new Vector2(GraphicsDevice.Viewport.Width / 2 - 100, GraphicsDevice.Viewport.Height / 2 - 200), Color.White, 2);
                 
                 // Draw "COLLECT ALL" Button
-                Rectangle collectAllBtn = new Rectangle(1920 / 2 + 220, 1080 / 2 - 150, 150, 40);
+                Rectangle collectAllBtn = new Rectangle(GraphicsDevice.Viewport.Width / 2 + 220, GraphicsDevice.Viewport.Height / 2 - 150, 150, 40);
                 
                 // Check if player has space for all items
                 int totalItems = 0;
@@ -1393,7 +1422,7 @@ namespace AntigravityMoon
             if (_showDeathScreen)
             {
                 // Dark overlay
-                _spriteBatch.Draw(_pixelTexture, new Rectangle(0, 0, 1920, 1080), Color.Black * 0.8f);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height), Color.Black * 0.8f);
                 
                 // Death message
                 string deathMessage = "YOU D.E.D.";
@@ -1411,11 +1440,11 @@ namespace AntigravityMoon
                         break;
                 }
                 
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, deathMessage, new Vector2(960 - 200, 400), Color.Red, 6);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, causeMessage, new Vector2(960 - 300, 500), Color.White, 3);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, deathMessage, new Vector2(GraphicsDevice.Viewport.Width / 2 - 200, GraphicsDevice.Viewport.Height / 2 - 150), Color.Red, 6);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, causeMessage, new Vector2(GraphicsDevice.Viewport.Width / 2 - 300, GraphicsDevice.Viewport.Height / 2 - 50), Color.White, 3);
                 
                 // Respawn button
-                Rectangle respawnBtn = new Rectangle(960 - 150, 540 + 50, 300, 60);
+                Rectangle respawnBtn = new Rectangle(GraphicsDevice.Viewport.Width / 2 - 150, GraphicsDevice.Viewport.Height / 2 + 50, 300, 60);
                 _spriteBatch.Draw(_pixelTexture, respawnBtn, Color.Green);
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "RESPAWN", new Vector2(respawnBtn.X + 50, respawnBtn.Y + 20), Color.Black, 3);
             }
@@ -1431,7 +1460,7 @@ namespace AntigravityMoon
                 int mapRange = 30; // Show 60x60 tiles (30 in each direction)
                 int mapWidth = mapRange * 2 * scale;
                 int mapHeight = mapRange * 2 * scale;
-                int mapX = 1920 - mapWidth - 20;
+                int mapX = GraphicsDevice.Viewport.Width - mapWidth - 20;
                 int mapY = 20;
 
                 // Background

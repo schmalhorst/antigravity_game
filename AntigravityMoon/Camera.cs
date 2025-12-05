@@ -30,5 +30,10 @@ namespace AntigravityMoon
         {
             return Vector2.Transform(screenPosition, Matrix.Invert(GetViewMatrix()));
         }
+
+        public void UpdateViewport(Viewport viewport)
+        {
+            Viewport = viewport;
+        }
     }
 }
