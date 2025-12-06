@@ -581,12 +581,13 @@ namespace AntigravityMoon
             }
 
             // Close Menus with Escape or moving away
-            if (_showWorkbenchMenu || _showGreenhouseMenu)
+            if (_showWorkbenchMenu || _showGreenhouseMenu || _showSpaceshipMenu)
             {
                 if (currentKeyboardState.IsKeyDown(Keys.Escape))
                 {
                     _showWorkbenchMenu = false;
                     _showGreenhouseMenu = false;
+                    _showSpaceshipMenu = false;
                     _interactedStructure = null;
                 }
                 else if (_interactedStructure != null && Vector2.Distance(_player.Position, _interactedStructure.Position) > 100)
@@ -599,11 +600,13 @@ namespace AntigravityMoon
                 // Handle Menu Clicks (Simple UI logic)
                 if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
                 {
-                    // Check UI bounds (Hardcoded for now)
+                    // Check UI bounds (Dynamic)
                     Vector2 mousePos = new Vector2(currentMouseState.X, currentMouseState.Y);
                     
-                    // Menu Rect: 960-300=660, 540-200=340. Size 600x400.
-                    Rectangle menuRect = new Rectangle(660, 340, 600, 400);
+                    // Menu Rect: Centered 600x400
+                    int menuWidth = 600;
+                    int menuHeight = 400;
+                    Rectangle menuRect = new Rectangle((GraphicsDevice.Viewport.Width - menuWidth) / 2, (GraphicsDevice.Viewport.Height - menuHeight) / 2, menuWidth, menuHeight);
 
                     // Close Button (Right - 40, Top + 10) -> (660+600-40, 340+10) = (1220, 350, 30, 30)
                     if (new Rectangle(menuRect.Right - 40, menuRect.Top + 10, 30, 30).Contains(mousePos))
@@ -611,6 +614,7 @@ namespace AntigravityMoon
                         _showWorkbenchMenu = false;
                         _showGreenhouseMenu = false;
                         _interactedStructure = null;
+                        _prevMouseState = currentMouseState; // Update state before returning
                         return;
                     }
 
@@ -656,6 +660,62 @@ namespace AntigravityMoon
                                      _player.Inventory.AddItem(crop);
                                  }
                              }
+                        }
+                    }
+                    else if (_showSpaceshipMenu)
+                    {
+                        // Menu Rect: Centered 300x250
+                        int spWidth = 300;
+                        int spHeight = 250;
+                        int spX = (GraphicsDevice.Viewport.Width - spWidth) / 2;
+                        int spY = (GraphicsDevice.Viewport.Height - spHeight) / 2;
+                        
+                        // Refill Button
+                        Rectangle refillBtn = new Rectangle(spX + 50, spY + 60, 200, 40);
+                        // Repair Button
+                        Rectangle repairBtn = new Rectangle(spX + 50, spY + 120, 200, 40);
+                        // Exit Button
+                        Rectangle exitBtn = new Rectangle(spX + 250, spY + 10, 40, 40);
+
+                        if (refillBtn.Contains(mousePos))
+                        {
+                            // Cost: 2 Rocks
+                            if (_player.Inventory.RemoveItems("Rock", 2))
+                            if (_player.Inventory.RemoveItems("Rock", 2))
+                            {
+                                _player.RefillOxygen();
+                                _showSpaceshipMenu = false;
+                                _prevMouseState = currentMouseState; // Update state
+                                return;
+                            }
+                        }
+                        else if (_interactedStructure != null && _interactedStructure.RepairStage == 0 && repairBtn.Contains(mousePos))
+                        {
+                            // Cost: 20 Crystal, 30 Rock
+                            int crystalCount = _player.Inventory.CountItem("Crystal");
+                            int rockCount = _player.Inventory.CountItem("Rock");
+                            
+                            if (crystalCount >= 20 && rockCount >= 30)
+                            {
+                                 _player.Inventory.RemoveItems("Crystal", 20);
+                                 _player.Inventory.RemoveItems("Rock", 30);
+                                 _interactedStructure.UpgradeRepairStage();
+                                 _showSpaceshipMenu = false;
+                                 _prevMouseState = currentMouseState; // Update state
+                                 return;
+                            }
+                        }
+                        else if (exitBtn.Contains(mousePos))
+                        {
+                            _showSpaceshipMenu = false;
+                            _prevMouseState = currentMouseState; // Update state
+                            return;
+                        }
+                        else if (!new Rectangle(spX, spY, spWidth, spHeight).Contains(mousePos))
+                        {
+                            _showSpaceshipMenu = false;
+                            _prevMouseState = currentMouseState; // Update state
+                            return;
                         }
                     }
                 }
@@ -774,43 +834,7 @@ namespace AntigravityMoon
                     }
                 }
 
-                if (_showSpaceshipMenu)
-            {
-                if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
-                {
-                    // Menu Position (Centered)
-                    int menuWidth = 300;
-                    int menuHeight = 150;
-                    int menuX = (GraphicsDevice.Viewport.Width - menuWidth) / 2;
-                    int menuY = (GraphicsDevice.Viewport.Height - menuHeight) / 2;
-                    
-                    Rectangle menuRect = new Rectangle(menuX, menuY, menuWidth, menuHeight);
-                    
-                    // Refill Button
-                    Rectangle refillBtn = new Rectangle(menuX + 50, menuY + 60, 200, 40);
-                    // Exit Button
-                    Rectangle exitBtn = new Rectangle(menuX + 250, menuY + 10, 40, 40);
-                    
-                    if (refillBtn.Contains(currentMouseState.Position))
-                    {
-                        // Cost: 2 Rocks
-                        if (_player.Inventory.RemoveItems("Rock", 2))
-                        {
-                            _player.RefillOxygen();
-                            _showSpaceshipMenu = false;
-                        }
-                    }
-                    else if (exitBtn.Contains(currentMouseState.Position))
-                    {
-                        _showSpaceshipMenu = false;
-                    }
-                    else if (!menuRect.Contains(currentMouseState.Position))
-                    {
-                        _showSpaceshipMenu = false;
-                    }
-                }
-                return; // Block other input
-            }
+
 
             // Update Aliens
                 for (int i = _aliens.Count - 1; i >= 0; i--)
@@ -840,6 +864,10 @@ namespace AntigravityMoon
                                 RandomOffset = Vector2.Zero
                             });
                         }
+                        
+                        // Loot Drop
+                        _entityManager.AddEntity(new Structure(_aliens[i].Position, "Rock", 32, 32));
+                        _entityManager.AddEntity(new Structure(_aliens[i].Position + new Vector2(10, 10), "Crystal", 32, 32));
                         
                         _aliens.RemoveAt(i);
                     }
@@ -901,7 +929,7 @@ namespace AntigravityMoon
                         int menuWidth = 60;
                         int menuHeight = 6 * 50 + 7 * 5;
                         int menuX = 10;
-                        int menuY = (1080 - menuHeight) / 2;
+                        int menuY = (GraphicsDevice.Viewport.Height - menuHeight) / 2;
                         
                         // Check Slots
                         for (int i = 0; i < 6; i++)
@@ -1199,7 +1227,9 @@ namespace AntigravityMoon
             else if (_showGreenhouseMenu)
             {
                 // Background
-                Rectangle menuRect = new Rectangle(960 - 300, 540 - 200, 600, 400);
+                int menuWidth = 600;
+                int menuHeight = 400;
+                Rectangle menuRect = new Rectangle((GraphicsDevice.Viewport.Width - menuWidth) / 2, (GraphicsDevice.Viewport.Height - menuHeight) / 2, menuWidth, menuHeight);
                 _spriteBatch.Draw(_pixelTexture, menuRect, Color.DarkGreen);
                 
                 // Close Button
@@ -1313,10 +1343,11 @@ namespace AntigravityMoon
 
 
                 // Draw Spaceship Menu
+            // Draw Spaceship Menu
             if (_showSpaceshipMenu)
             {
                 int menuWidth = 300;
-                int menuHeight = 150;
+                int menuHeight = 250; // Increased height
                 int menuX = (GraphicsDevice.Viewport.Width - menuWidth) / 2;
                 int menuY = (GraphicsDevice.Viewport.Height - menuHeight) / 2;
                 
@@ -1333,16 +1364,38 @@ namespace AntigravityMoon
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "X", new Vector2(exitBtn.X + 12, exitBtn.Y + 10), Color.White, 2);
 
                 // Refill Button
-                bool canAfford = _player.Inventory.CountItem("Rock") >= 2;
-                Color btnColor = canAfford ? Color.Green : Color.Gray;
+                bool canAffordRefill = _player.Inventory.CountItem("Rock") >= 2;
+                Color refillBtnColor = canAffordRefill ? Color.Green : Color.Gray;
                 Rectangle refillBtn = new Rectangle(menuX + 50, menuY + 60, 200, 40);
                 
-                _spriteBatch.Draw(_pixelTexture, refillBtn, btnColor);
+                _spriteBatch.Draw(_pixelTexture, refillBtn, refillBtnColor);
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "REFILL OXYJIN", new Vector2(refillBtn.X + 20, refillBtn.Y + 10), Color.Black, 2);
+                Color refillCostColor = canAffordRefill ? Color.White : Color.Red;
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "COST: 2 ROCKS", new Vector2(menuX + 80, menuY + 105), refillCostColor, 2);
                 
-                // Cost
-                Color costColor = canAfford ? Color.White : Color.Red;
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "COST: 2 ROCKS", new Vector2(menuX + 80, menuY + 110), costColor, 2);
+                // Repair Button
+                if (_interactedStructure != null)
+                {
+                    if (_interactedStructure.RepairStage == 0)
+                    {
+                        int crystalCount = _player.Inventory.CountItem("Crystal");
+                        int rockCount = _player.Inventory.CountItem("Rock");
+                        bool canAffordRepair = crystalCount >= 20 && rockCount >= 30;
+                        
+                        Rectangle repairBtn = new Rectangle(menuX + 50, menuY + 130, 200, 40);
+                        _spriteBatch.Draw(_pixelTexture, repairBtn, canAffordRepair ? Color.Green : Color.Gray);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "REPAIR (STG 1)", new Vector2(repairBtn.X + 25, repairBtn.Y + 10), Color.Black, 2);
+                        
+                        string costStr = "20 CRYS, 30 ROCK";
+                        Color repairCostColor = canAffordRepair ? Color.White : Color.Red;
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, costStr, new Vector2(menuX + 60, menuY + 175), repairCostColor, 2);
+                    }
+                    else
+                    {
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "REPAIRS O.K.", new Vector2(menuX + 80, menuY + 140), Color.Green, 2);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "(WAIT FOR METAL)", new Vector2(menuX + 60, menuY + 165), Color.Gray, 2);
+                    }
+                }
             }
 
             // Draw Loot Menu

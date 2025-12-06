@@ -13,12 +13,27 @@ namespace AntigravityMoon
         public float GrowthTimer { get; private set; }
         public string CropType { get; private set; }
         public bool IsReadyToHarvest { get; private set; }
+        
+        // Repair System
+        public int RepairStage { get; private set; } = 0;
 
         public Structure(Vector2 position, string type, int width, int height) 
-            : base(position, type, false, false, true) // Structures are solid
+            : base(position, type, false, false, true) // Default: Solid, Not Harvestable
         {
             Width = width;
             Height = height;
+
+            // Loot Types (Rock, Crystal) should be harvestable and not solid
+            if (type == "Rock" || type == "Crystal")
+            {
+                IsHarvestable = true;
+                IsSolid = false;
+            }
+        }
+
+        public void UpgradeRepairStage()
+        {
+            RepairStage++;
         }
 
         public void StartGrowing(string crop)
