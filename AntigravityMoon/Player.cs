@@ -258,12 +258,67 @@ namespace AntigravityMoon
                             canBuild = true;
                         }
                     }
+                    else if (_structureToPlace == "Reactor")
+                    {
+                        if (Inventory.CountItem("Rock") >= 50 && Inventory.CountItem("Crystal") >= 30)
+                        {
+                            Inventory.RemoveItems("Rock", 50);
+                            Inventory.RemoveItems("Crystal", 30);
+                            canBuild = true;
+                        }
+                    }
+                    else if (_structureToPlace == "HAB")
+                    {
+                         if (Inventory.CountItem("Rock") >= 60 && Inventory.CountItem("Crystal") >= 20)
+                        {
+                            Inventory.RemoveItems("Rock", 60);
+                            Inventory.RemoveItems("Crystal", 20);
+                            canBuild = true;
+                        }
+                    }
+                    else if (_structureToPlace == "Bionic Tech")
+                    {
+                         if (Inventory.CountItem("Rock") >= 40 && Inventory.CountItem("Crystal") >= 50)
+                        {
+                            Inventory.RemoveItems("Rock", 40);
+                            Inventory.RemoveItems("Crystal", 50);
+                            canBuild = true;
+                        }
+                    }
+                    else if (_structureToPlace == "Machinery")
+                    {
+                         if (Inventory.CountItem("Rock") >= 80 && Inventory.CountItem("Crystal") >= 40)
+                        {
+                            Inventory.RemoveItems("Rock", 80);
+                            Inventory.RemoveItems("Crystal", 40);
+                            canBuild = true;
+                        }
+                    }
+                    else if (_structureToPlace == "Radar")
+                    {
+                         if (Inventory.CountItem("Rock") >= 40 && Inventory.CountItem("Crystal") >= 40)
+                        {
+                            Inventory.RemoveItems("Rock", 40);
+                            Inventory.RemoveItems("Crystal", 40);
+                            canBuild = true;
+                        }
+                    }
+                    else if (_structureToPlace == "WormHole")
+                    {
+                         if (Inventory.CountItem("Rock") >= 100 && Inventory.CountItem("Crystal") >= 100)
+                        {
+                            Inventory.RemoveItems("Rock", 100);
+                            Inventory.RemoveItems("Crystal", 100);
+                            canBuild = true;
+                        }
+                    }
 
                     if (canBuild)
                     {
                         int w = 64; // 2x2 tiles
                         int h = 64;
                         if (_structureToPlace == "Workbench") { w = 32; h = 32; }
+                        else if (_structureToPlace == "HAB") { w = 128; h = 128; }
 
                         entityManager.AddEntity(new Structure(pos, _structureToPlace, w, h));
                         IsPlacing = false; // Finish placing

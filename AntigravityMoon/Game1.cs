@@ -73,7 +73,17 @@ namespace AntigravityMoon
             LoadTexture("workbench");
             LoadTexture("corn");
             LoadTexture("spaceship");
+            LoadTexture("spaceship");
             LoadTexture("metro_alien");
+            
+            // New Buildings
+            LoadTexture("reactor");
+            LoadTexture("hab");
+            LoadTexture("bionic_tech");
+            LoadTexture("machinery");
+            LoadTexture("radar");
+            LoadTexture("wormhole");
+
             _textures["backpack"] = Content.Load<Texture2D>("backpack");
             _textures["skull_crossbones"] = Content.Load<Texture2D>("skull_crossbones");
             
@@ -779,6 +789,22 @@ namespace AntigravityMoon
                                     _interactedStructure = s;
                                     _showInventory = false;
                                 }
+                                else if (s.Type == "WormHole")
+                                {
+                                    // Teleport Logic
+                                    float darkSideX = 1600000; // Chunk ~2083
+                                    if (_player.Position.X < 800000)
+                                    {
+                                        // Go to Dark Side
+                                        _player.Position = new Vector2(darkSideX, _player.Position.Y);
+                                    }
+                                    else
+                                    {
+                                        // Return Home
+                                        _player.Position = new Vector2(0, _player.Position.Y);
+                                    }
+                                    _showInventory = false;
+                                }
                             }
                         }
                         else if (entity is Backpack bp && Vector2.Distance(bp.Position, mouseWorldPos) < 40)
@@ -927,39 +953,57 @@ namespace AntigravityMoon
                     if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
                     {
                         int menuWidth = 60;
-                        int menuHeight = 6 * 50 + 7 * 5;
+                        int menuHeight = 9 * 50 + 10 * 5; // 8 Buildings + 1 Edit
                         int menuX = 10;
                         int menuY = (GraphicsDevice.Viewport.Height - menuHeight) / 2;
                         
                         // Check Slots
-                        for (int i = 0; i < 6; i++)
+                        for (int i = 0; i < 9; i++)
                         {
                             Rectangle slotRect = new Rectangle(menuX + 5, menuY + 5 + i * 55, 50, 50);
                             if (slotRect.Contains(currentMouseState.Position))
                             {
-                                if (i == 0) // Greenhouse
-                                {
-                                    if (_player.Inventory.CountItem("Rock") >= 2 && _player.Inventory.CountItem("Crystal") >= 1)
-                                    {
-                                        _selectedBuildStructure = "Greenhouse";
-                                        _buildModeState = BuildModeState.Placing;
-                                        _player.StartPlacing("Greenhouse");
-                                    }
-                                }
-                                else if (i == 1) // Workbench
-                                {
-                                    if (_player.Inventory.CountItem("Rock") >= 3)
-                                    {
-                                        _selectedBuildStructure = "Workbench";
-                                        _buildModeState = BuildModeState.Placing;
-                                        _player.StartPlacing("Workbench");
-                                    }
-                                }
-                                else if (i == 5) // Edit Button
+                                string structure = "";
+                                if (i == 0) structure = "Greenhouse";
+                                else if (i == 1) structure = "Workbench";
+                                else if (i == 2) structure = "Reactor";
+                                else if (i == 3) structure = "HAB";
+                                else if (i == 4) structure = "Bionic Tech";
+                                else if (i == 5) structure = "Machinery";
+                                else if (i == 6) structure = "Radar";
+                                else if (i == 7) structure = "WormHole"; // Case sensitive? User said WormHoles/WormHole, let's use "WormHole"
+                                
+                                if (i == 8) // Edit Button
                                 {
                                     if (_buildModeState == BuildModeState.Menu) _buildModeState = BuildModeState.Editing;
                                     else _buildModeState = BuildModeState.Menu;
                                     _showEditContextMenu = false;
+                                }
+                                else if (structure != "")
+                                {
+                                    // Check costs locally for UI feedback (Strict check in Player.cs)
+                                    // Or just let Player.StartPlacing handle it? 
+                                    // Logic here: check resources -> StartPlacing.
+                                    // I'll replicate simple checks.
+                                    bool canBuild = false;
+                                    int rock = _player.Inventory.CountItem("Rock");
+                                    int crys = _player.Inventory.CountItem("Crystal");
+
+                                    if (structure == "Greenhouse") canBuild = rock >= 2 && crys >= 1;
+                                    else if (structure == "Workbench") canBuild = rock >= 3;
+                                    else if (structure == "Reactor") canBuild = rock >= 50 && crys >= 30;
+                                    else if (structure == "HAB") canBuild = rock >= 60 && crys >= 20;
+                                    else if (structure == "Bionic Tech") canBuild = rock >= 40 && crys >= 50;
+                                    else if (structure == "Machinery") canBuild = rock >= 80 && crys >= 40;
+                                    else if (structure == "Radar") canBuild = rock >= 40 && crys >= 40;
+                                    else if (structure == "WormHole") canBuild = rock >= 100 && crys >= 100;
+
+                                    if (canBuild)
+                                    {
+                                        _selectedBuildStructure = structure;
+                                        _buildModeState = BuildModeState.Placing;
+                                        _player.StartPlacing(structure);
+                                    }
                                 }
                             }
                         }
@@ -1274,14 +1318,14 @@ namespace AntigravityMoon
             {
                 // Draw Menu Background (Left Side Vertical)
                 int menuWidth = 60;
-                int menuHeight = 6 * 50 + 7 * 5; // 6 slots * 50px + padding
+                int menuHeight = 9 * 50 + 10 * 5; // 9 slots
                 int menuX = 10;
                 int menuY = (GraphicsDevice.Viewport.Height - menuHeight) / 2;
                 
                 _spriteBatch.Draw(_pixelTexture, new Rectangle(menuX, menuY, menuWidth, menuHeight), Color.DarkGray);
 
                 // Draw Slots
-                for (int i = 0; i < 6; i++)
+                for (int i = 0; i < 9; i++)
                 {
                     Rectangle slotRect = new Rectangle(menuX + 5, menuY + 5 + i * 55, 50, 50);
                     
@@ -1309,17 +1353,54 @@ namespace AntigravityMoon
                         if (_textures.ContainsKey("workbench")) 
                             _spriteBatch.Draw(_textures["workbench"], slotRect, canBuild ? Color.White : Color.Gray * 0.5f);
                     }
-                    else if (i == 5) // Edit Button
+                    else if (i == 2) // Reactor
+                    {
+                        // Cost: 50 Rock, 30 Crystal
+                        canBuild = _player.Inventory.CountItem("Rock") >= 50 && _player.Inventory.CountItem("Crystal") >= 30;
+                        costText = "50 R, 30 C";
+                        if (_textures.ContainsKey("reactor")) _spriteBatch.Draw(_textures["reactor"], slotRect, canBuild ? Color.White : Color.Gray * 0.5f);
+                    }
+                    else if (i == 3) // HAB
+                    {
+                        // Cost: 60 Rock, 20 Crystal
+                        canBuild = _player.Inventory.CountItem("Rock") >= 60 && _player.Inventory.CountItem("Crystal") >= 20;
+                        costText = "60 R, 20 C";
+                        if (_textures.ContainsKey("hab")) _spriteBatch.Draw(_textures["hab"], slotRect, canBuild ? Color.White : Color.Gray * 0.5f);
+                    }
+                    else if (i == 4) // Bionic Tech
+                    {
+                        // Cost: 40 Rock, 50 Crystal
+                        canBuild = _player.Inventory.CountItem("Rock") >= 40 && _player.Inventory.CountItem("Crystal") >= 50;
+                        costText = "40 R, 50 C";
+                        if (_textures.ContainsKey("bionic_tech")) _spriteBatch.Draw(_textures["bionic_tech"], slotRect, canBuild ? Color.White : Color.Gray * 0.5f);
+                    }
+                    else if (i == 5) // Machinery
+                    {
+                        // Cost: 80 Rock, 40 Crystal
+                        canBuild = _player.Inventory.CountItem("Rock") >= 80 && _player.Inventory.CountItem("Crystal") >= 40;
+                        costText = "80 R, 40 C";
+                        if (_textures.ContainsKey("machinery")) _spriteBatch.Draw(_textures["machinery"], slotRect, canBuild ? Color.White : Color.Gray * 0.5f);
+                    }
+                    else if (i == 6) // Radar
+                    {
+                        // Cost: 40 Rock, 40 Crystal
+                        canBuild = _player.Inventory.CountItem("Rock") >= 40 && _player.Inventory.CountItem("Crystal") >= 40;
+                        costText = "40 R, 40 C";
+                        if (_textures.ContainsKey("radar")) _spriteBatch.Draw(_textures["radar"], slotRect, canBuild ? Color.White : Color.Gray * 0.5f);
+                    }
+                    else if (i == 7) // WormHole
+                    {
+                        // Cost: 100 Rock, 100 Crystal
+                        canBuild = _player.Inventory.CountItem("Rock") >= 100 && _player.Inventory.CountItem("Crystal") >= 100;
+                        costText = "100 R, 100 C";
+                        if (_textures.ContainsKey("wormhole")) _spriteBatch.Draw(_textures["wormhole"], slotRect, canBuild ? Color.White : Color.Gray * 0.5f);
+                    }
+                    else if (i == 8) // Edit Button
                     {
                         _spriteBatch.Draw(_pixelTexture, slotRect, _buildModeState == BuildModeState.Editing ? Color.Green : Color.Blue);
                         string btnText = _buildModeState == BuildModeState.Editing ? "OK" : "EDIT"; // Short text for vertical
                         PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, btnText, new Vector2(slotRect.X + 5, slotRect.Y + 20), Color.White, 1);
                         continue; // Skip cost logic for button
-                    }
-                    else
-                    {
-                        _spriteBatch.Draw(_pixelTexture, slotRect, Color.Gray);
-                        continue; // Empty slot
                     }
 
                     // Draw Cost Text (Hover or Always? Let's do always for now to be clear)

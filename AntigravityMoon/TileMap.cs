@@ -81,7 +81,7 @@ namespace AntigravityMoon
                 }
             }
             
-            // Spawn resources in this chunk
+                // Spawn resources in this chunk
             for (int x = 0; x < ChunkSize; x++)
             {
                 for (int y = 0; y < ChunkSize; y++)
@@ -96,15 +96,19 @@ namespace AntigravityMoon
                         
                         double spawnRoll = chunkRandom.NextDouble();
                         
-                        // 2% chance to spawn Rock
-                        if (spawnRoll < 0.02)
+                        bool isDarkSide = chunkCoord.X > 2000; // X > 96,000 pixels
+
+                        if (isDarkSide)
                         {
-                            OnSpawnEntity?.Invoke(worldPos, "Rock");
+                            // Dark Side: More Crystals
+                            if (spawnRoll < 0.05) OnSpawnEntity?.Invoke(worldPos, "Crystal");
+                            else if (spawnRoll < 0.10) OnSpawnEntity?.Invoke(worldPos, "Rock");
                         }
-                        // 1% chance to spawn Crystal
-                        else if (spawnRoll < 0.03)
+                        else
                         {
-                            OnSpawnEntity?.Invoke(worldPos, "Crystal");
+                            // Normal
+                            if (spawnRoll < 0.02) OnSpawnEntity?.Invoke(worldPos, "Rock");
+                            else if (spawnRoll < 0.03) OnSpawnEntity?.Invoke(worldPos, "Crystal");
                         }
                     }
                 }
@@ -177,9 +181,23 @@ namespace AntigravityMoon
                     bool explored = IsExplored(x, y);
                     
                     Color color = Color.White;
-                    if (tileType == 0) color = Color.Gray;
-                    else if (tileType == 1) color = Color.DarkGray;
-                    else if (tileType == 2) color = Color.Black;
+                    
+                    bool isDarkSide = x > 32000; // Corresponds to chunk 2000 * 16
+
+                    if (isDarkSide)
+                    {
+                        // Dark Side Palette
+                        if (tileType == 0) color = new Color(20, 0, 40); // Dark Purple dust
+                        else if (tileType == 1) color = new Color(60, 20, 80); // Lighter purple rock
+                        else if (tileType == 2) color = Color.Black;
+                    }
+                    else
+                    {
+                        // Normal Palette
+                        if (tileType == 0) color = Color.Gray;
+                        else if (tileType == 1) color = Color.DarkGray;
+                        else if (tileType == 2) color = Color.Black;
+                    }
 
                     if (!explored)
                     {
