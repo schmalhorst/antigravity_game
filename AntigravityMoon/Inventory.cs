@@ -108,6 +108,34 @@ namespace AntigravityMoon
             return false; // Full
         }
 
+        public bool CanAddItem(string itemName)
+        {
+            // 1. Try to stack
+            for (int y = 0; y < Rows; y++)
+            {
+                for (int x = 0; x < Cols; x++)
+                {
+                    if (_items[x, y].ItemName == itemName && _items[x, y].Count < MaxStack)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            // 2. Find empty slot
+            for (int y = 0; y < Rows; y++)
+            {
+                for (int x = 0; x < Cols; x++)
+                {
+                    if (_items[x, y].ItemName == null)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false; // Full
+        }
+
         public string GetItem(int x, int y)
         {
             if (x < 0 || x >= Cols || y < 0 || y >= Rows) return null;

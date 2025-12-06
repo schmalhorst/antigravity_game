@@ -7,7 +7,7 @@ namespace AntigravityMoon
 {
     public class TileMap
     {
-        public const int TileSize = 48;
+        public const int TileSize = 64;
         public const int ChunkSize = 16; // 16x16 tiles per chunk
         
         // Event for spawning entities when chunks are generated

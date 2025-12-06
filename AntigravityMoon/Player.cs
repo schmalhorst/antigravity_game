@@ -21,6 +21,8 @@ namespace AntigravityMoon
         private float _speed = 200f;
         private Entity _heldEntity; // For antigravity tool
         
+        public event Action OnInventoryFull;
+        
         // Build Mode
         public bool IsBuildMode { get; private set; }
         private string _selectedStructure = "Greenhouse"; // Default
@@ -371,6 +373,11 @@ namespace AntigravityMoon
                     if (Inventory.AddItem(target.Type))
                     {
                         entityManager.RemoveEntity(target);
+                    }
+                    else
+                    {
+                        // Inventory Full
+                        OnInventoryFull?.Invoke();
                     }
                 }
             }

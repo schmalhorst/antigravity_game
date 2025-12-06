@@ -25,6 +25,7 @@ namespace AntigravityMoon
         private bool _saveExists;
         private const string SaveFileName = "colony_save.json";
         private float _saveAnimationTimer = 0f;
+        private float _inventoryFullTimer = 0f;
 
         private Texture2D _vignetteTexture;
 
@@ -45,6 +46,7 @@ namespace AntigravityMoon
             _tileMap = new TileMap(); // Infinite map
             _entityManager = new EntityManager();
             _player = new Player(Vector2.Zero); // Start at world origin
+            _player.OnInventoryFull += () => { _inventoryFullTimer = 2.0f; };
 
             // Subscribe to entity spawning from TileMap
             _tileMap.OnSpawnEntity += (position, entityType) =>
@@ -681,10 +683,19 @@ namespace AntigravityMoon
                         {
                              if (_interactedStructure != null && _interactedStructure.IsReadyToHarvest)
                              {
-                                 string crop = _interactedStructure.Harvest();
-                                 if (crop != null)
+                                 // Check if we can add Corn (since that's what we grow)
+                                 if (_player.Inventory.CanAddItem("Corn"))
                                  {
-                                     _player.Inventory.AddItem(crop);
+                                     string crop = _interactedStructure.Harvest();
+                                     if (crop != null)
+                                     {
+                                         _player.Inventory.AddItem(crop);
+                                     }
+                                 }
+                                 else
+                                 {
+                                     // Inventory Full Warning
+                                     _inventoryFullTimer = 2.0f;
                                  }
                              }
                         }
@@ -1648,6 +1659,21 @@ namespace AntigravityMoon
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "RESPAWN", new Vector2(respawnBtn.X + 50, respawnBtn.Y + 20), Color.Black, 3);
             }
             
+            // Inventory Full Warning
+            if (_inventoryFullTimer > 0)
+            {
+                _inventoryFullTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+                string msg = "INVENTORY FULL";
+                Vector2 msgPos = new Vector2(GraphicsDevice.Viewport.Width / 2 - 100, GraphicsDevice.Viewport.Height / 2);
+                
+                // Pulse effect
+                float scale = 3f + (float)Math.Sin(gameTime.TotalGameTime.TotalSeconds * 10) * 0.2f;
+                // Shadow
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, msg, msgPos + new Vector2(2,2), Color.Black, (int)scale);
+                // Text
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, msg, msgPos, Color.Red, (int)scale);
+            }
+
             _spriteBatch.End();
             }
 
