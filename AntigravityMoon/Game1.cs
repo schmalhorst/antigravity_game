@@ -531,55 +531,43 @@ namespace AntigravityMoon
                     
                     if (collectAllBtn.Contains(currentMouseState.Position))
                     {
-                        // Check if player has space for all items (counting stacks)
-                        int totalItems = 0;
+                        // Try to transfer all items (Best Effort)
+                        bool backpackEmpty = true;
+                        
                         for (int y = 0; y < _interactedBackpack.Storage.Rows; y++)
                         {
                             for (int x = 0; x < _interactedBackpack.Storage.Cols; x++)
                             {
-                                if (_interactedBackpack.Storage.GetItem(x, y) != null)
+                                string item = _interactedBackpack.Storage.GetItem(x, y);
+                                if (item != null)
                                 {
-                                    // Count all items in the stack, not just the slot
-                                    totalItems += _interactedBackpack.Storage.GetItemCount(x, y);
-                                }
-                            }
-                        }
-                        
-                        int emptySlots = 0;
-                        for (int y = 0; y < _player.Inventory.Rows; y++)
-                        {
-                            for (int x = 0; x < _player.Inventory.Cols; x++)
-                            {
-                                if (_player.Inventory.GetItem(x, y) == null)
-                                    emptySlots++;
-                            }
-                        }
-                        
-                        if (emptySlots >= totalItems)
-                        {
-                            // Transfer all items including full stacks
-                            for (int y = 0; y < _interactedBackpack.Storage.Rows; y++)
-                            {
-                                for (int x = 0; x < _interactedBackpack.Storage.Cols; x++)
-                                {
-                                    string item = _interactedBackpack.Storage.GetItem(x, y);
-                                    if (item != null)
+                                    int stackCount = _interactedBackpack.Storage.GetItemCount(x, y);
+                                    
+                                    // Try to transfer each item in the stack
+                                    for (int i = 0; i < stackCount; i++)
                                     {
-                                        // Transfer entire stack
-                                        int stackCount = _interactedBackpack.Storage.GetItemCount(x, y);
-                                        for (int i = 0; i < stackCount; i++)
-                                        {
-                                            _player.Inventory.AddItem(item);
-                                        }
-                                        // Remove entire stack from backpack
-                                        for (int i = 0; i < stackCount; i++)
+                                        if (_player.Inventory.AddItem(item))
                                         {
                                             _interactedBackpack.Storage.RemoveItem(x, y);
                                         }
+                                        else
+                                        {
+                                            backpackEmpty = false; // Couldn't take everything
+                                            // Don't break completely, try other items (maybe they stack)
+                                        }
+                                    }
+                                    
+                                    // Check if slot still has items (partially full or full)
+                                    if (_interactedBackpack.Storage.GetItem(x, y) != null)
+                                    {
+                                        backpackEmpty = false;
                                     }
                                 }
                             }
-                            
+                        }
+                        
+                        if (_interactedBackpack.Storage.IsEmpty())
+                        {
                             // Destroy backpack
                             _entityManager.RemoveEntity(_interactedBackpack);
                             _showLootMenu = false;
