@@ -205,6 +205,14 @@ namespace AntigravityMoon
                 { true, false, true },
                 { true, false, true }
             };
+            // <
+            _charMap['<'] = new bool[,] {
+                { false, false, true },
+                { false, true, false },
+                { true, false, false },
+                { false, true, false },
+                { false, false, true }
+            };
             // Y
             _charMap['Y'] = new bool[,] {
                 { true, false, true },
@@ -322,8 +330,16 @@ namespace AntigravityMoon
                 { true, false, true },
                 { false, false, true },
                 { false, true, false },
-                { true, false, false },
+                { false, false, true },
                 { true, false, true }
+            };
+            // >
+            _charMap['>'] = new bool[,] {
+                { true, false, false },
+                { false, true, false },
+                { false, false, true },
+                { false, true, false },
+                { true, false, false }
             };
             // .
             _charMap['.'] = new bool[,] {

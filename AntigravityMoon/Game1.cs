@@ -428,13 +428,21 @@ namespace AntigravityMoon
                     }
                 }
                 
-                // Left Click Outside to Close
+                // Sort Button Logic
+                int invWidthVal = _player.Inventory.Cols * 45 + 5; // Use same calc as Draw
+                Rectangle sortBtn = new Rectangle((int)invPos.X + invWidthVal - 60, (int)invPos.Y - 25, 60, 20);
+                
                 if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
                 {
-                   if (!inventoryRect.Contains(currentMouseState.Position))
-                   {
-                       _showInventory = false;
-                   }
+                    if (sortBtn.Contains(currentMouseState.Position))
+                    {
+                        _player.Inventory.MergeAndSort();
+                    }
+                    // Left Click Outside to Close (excluding sort button)
+                    else if (!inventoryRect.Contains(currentMouseState.Position))
+                    {
+                        _showInventory = false;
+                    }
                 }
             }
 
@@ -859,7 +867,6 @@ namespace AntigravityMoon
             }
 
                 
-                // Eat Corn Logic (Press E to eat if have Corn)
                 if (currentKeyboardState.IsKeyDown(Keys.E) && !_prevKeyboardState.IsKeyDown(Keys.E))
                 {
                     if (_player.Inventory.RemoveItems("Corn", 1))
@@ -867,6 +874,8 @@ namespace AntigravityMoon
                         _player.Eat(100f);
                     }
                 }
+
+
             }
 
                 // Update Structures
@@ -1260,6 +1269,14 @@ namespace AntigravityMoon
             if (_showInventory)
             {
                 _player.Inventory.Draw(_spriteBatch, _pixelTexture, _textures, GetInventoryPosition());
+                
+                // Draw Sort Button
+                Vector2 invPos = GetInventoryPosition();
+                int invWidth = _player.Inventory.Cols * 45 + 5;
+                Rectangle sortBtn = new Rectangle((int)invPos.X + invWidth - 60, (int)invPos.Y - 25, 60, 20);
+                
+                _spriteBatch.Draw(_pixelTexture, sortBtn, Color.Gray);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "-> <-", new Vector2(sortBtn.X + 10, sortBtn.Y + 3), Color.White, 2);
             }
 
             // Draw Health Bar

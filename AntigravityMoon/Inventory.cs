@@ -257,6 +257,61 @@ namespace AntigravityMoon
             }
         }
 
+        public void MergeAndSort()
+        {
+            // 1. Aggregate counts
+            Dictionary<string, int> totalCounts = new Dictionary<string, int>();
+            for (int y = 0; y < Rows; y++)
+            {
+                for (int x = 0; x < Cols; x++)
+                {
+                    if (_items[x, y].ItemName != null)
+                    {
+                        if (!totalCounts.ContainsKey(_items[x, y].ItemName))
+                        {
+                            totalCounts[_items[x, y].ItemName] = 0;
+                        }
+                        totalCounts[_items[x, y].ItemName] += _items[x, y].Count;
+                    }
+                }
+            }
+
+            // 2. Clear Inventory
+            Clear();
+
+            // 3. Re-add items (sorted alphabetically keys)
+            List<string> sortedKeys = new List<string>(totalCounts.Keys);
+            sortedKeys.Sort();
+
+            foreach (string item in sortedKeys)
+            {
+                int count = totalCounts[item];
+                while (count > 0)
+                {
+                    // Find first empty slot
+                    bool added = false;
+                    for (int y = 0; y < Rows; y++)
+                    {
+                        for (int x = 0; x < Cols; x++)
+                        {
+                            if (_items[x, y].ItemName == null)
+                            {
+                                int amountToAdd = Math.Min(count, MaxStack);
+                                _items[x, y].ItemName = item;
+                                _items[x, y].Count = amountToAdd;
+                                count -= amountToAdd;
+                                added = true;
+                                break;
+                            }
+                        }
+                        if (added) break;
+                    }
+                    
+                    if (!added) break; // Inventory full (shouldn't happen if we just condensed)
+                }
+            }
+        }
+
         public void Draw(SpriteBatch spriteBatch, Texture2D pixelTexture, Dictionary<string, Texture2D> itemTextures, Vector2 position)
         {
             int cellSize = 40;
