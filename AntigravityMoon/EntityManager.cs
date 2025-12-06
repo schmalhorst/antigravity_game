@@ -23,6 +23,11 @@ namespace AntigravityMoon
             _entities.Remove(entity);
         }
 
+        public void Clear()
+        {
+            _entities.Clear();
+        }
+
         public List<Entity> GetEntities()
         {
             return _entities;
@@ -41,12 +46,20 @@ namespace AntigravityMoon
                     continue; // Skip drawing unexplored entities
                 }
                 
+                if (string.IsNullOrEmpty(entity.Type))
+                {
+                    // Fallback for nameless entities
+                    if (textures != null && textures.ContainsKey("Pixel"))
+                         entity.Draw(spriteBatch, textures["Pixel"], mouseWorldPos);
+                    continue;
+                }
+
                 string key = entity.Type.ToLower();
-                if (textures.ContainsKey(key))
+                if (textures != null && textures.ContainsKey(key))
                 {
                     entity.Draw(spriteBatch, textures[key], mouseWorldPos);
                 }
-                else
+                else if (textures != null && textures.ContainsKey("Pixel"))
                 {
                     // Fallback
                     entity.Draw(spriteBatch, textures["Pixel"], mouseWorldPos);

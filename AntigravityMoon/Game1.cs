@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -18,6 +19,12 @@ namespace AntigravityMoon
         private EntityManager _entityManager;
         private Player _player;
         private Camera _camera;
+
+        
+        private Texture2D _floppyIcon;
+        private bool _saveExists;
+        private const string SaveFileName = "colony_save.json";
+        private float _saveAnimationTimer = 0f;
 
         public Game1()
         {
@@ -52,6 +59,7 @@ namespace AntigravityMoon
             };
 
             base.Initialize();
+            _saveExists = File.Exists(SaveFileName);
         }
 
         protected override void LoadContent()
@@ -73,7 +81,6 @@ namespace AntigravityMoon
             LoadTexture("workbench");
             LoadTexture("corn");
             LoadTexture("spaceship");
-            LoadTexture("spaceship");
             LoadTexture("metro_alien");
             
             // New Buildings
@@ -83,6 +90,7 @@ namespace AntigravityMoon
             LoadTexture("machinery");
             LoadTexture("radar");
             LoadTexture("wormhole");
+            LoadTexture("floppy");
 
             _textures["backpack"] = Content.Load<Texture2D>("backpack");
             _textures["skull_crossbones"] = Content.Load<Texture2D>("skull_crossbones");
@@ -91,6 +99,8 @@ namespace AntigravityMoon
             _skullTexture = _textures["skull_crossbones"];
             _spaceshipTexture = _textures["spaceship"];
             _spaceshipPosition = new Vector2(400, -100); // Start off screen
+            
+            if (_textures.ContainsKey("floppy")) _floppyIcon = _textures["floppy"];
         }
 
         private void LoadTexture(string name)
@@ -224,10 +234,25 @@ namespace AntigravityMoon
 
             if (_currentGameState == GameState.StartMenu)
             {
-                if (currentKeyboardState.IsKeyDown(Keys.Enter))
+                // UI Buttons
+                Rectangle newGameBtn = new Rectangle(500, 600, 300, 50);
+                Rectangle loadGameBtn = new Rectangle(500, 670, 300, 50);
+
+                // Mouse Interaction
+                if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
                 {
-                    _currentGameState = GameState.Intro;
-                    _spaceshipPosition = new Vector2(400 - 32, -100); // Center horizontally (assuming 64 width)
+                    if (newGameBtn.Contains(currentMouseState.Position))
+                    {
+                        // New Game
+                        _currentGameState = GameState.Intro;
+                        _spaceshipPosition = new Vector2(400 - 32, -100); 
+                    }
+                    else if (_saveExists && loadGameBtn.Contains(currentMouseState.Position))
+                    {
+                        // Load Game
+                        LoadGame();
+                        // Note: LoadGame sets state to Playing directly, skipping Intro
+                    }
                 }
             }
             else if (_currentGameState == GameState.Intro)
@@ -805,8 +830,19 @@ namespace AntigravityMoon
                              }
                         }
                     }
+                        }
+
+                // Handle Save Button Click
+                Rectangle saveBtnRect = new Rectangle(GraphicsDevice.Viewport.Width - 50, GraphicsDevice.Viewport.Height - 50, 40, 40);
+                if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
+                {
+                    if (saveBtnRect.Contains(currentMouseState.Position))
+                    {
+                        SaveGame();
                     }
                 }
+            }
+
                 
                 // Eat Corn Logic (Press E to eat if have Corn)
                 if (currentKeyboardState.IsKeyDown(Keys.E) && !_prevKeyboardState.IsKeyDown(Keys.E))
@@ -1062,7 +1098,15 @@ namespace AntigravityMoon
             _prevKeyboardState = currentKeyboardState;
             _prevMouseState = currentMouseState;
 
+
             base.Update(gameTime);
+            
+            // Update Save Animation
+            if (_saveAnimationTimer > 0)
+            {
+                _saveAnimationTimer -= dt;
+                if (_saveAnimationTimer < 0) _saveAnimationTimer = 0;
+            }
         }
 
         private void SpawnRandomEntity()
@@ -1109,7 +1153,20 @@ namespace AntigravityMoon
             {
                 _spriteBatch.Begin();
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "ANTIGRAVITY MOON", new Vector2(400, 400), Color.White, 8);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS ENTER TO START", new Vector2(550, 600), Color.White, 4);
+                
+                // New Colony Button
+                Rectangle newGameBtn = new Rectangle(500, 600, 300, 50);
+                _spriteBatch.Draw(_pixelTexture, newGameBtn, Color.Green);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "NEW COLONY", new Vector2(newGameBtn.X + 20, newGameBtn.Y + 10), Color.White, 3);
+                
+                // Load Colony Button
+                if (_saveExists)
+                {
+                    Rectangle loadGameBtn = new Rectangle(500, 670, 300, 50);
+                    _spriteBatch.Draw(_pixelTexture, loadGameBtn, Color.Blue);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "LOAD COLONY", new Vector2(loadGameBtn.X + 20, loadGameBtn.Y + 10), Color.White, 3);
+                }
+
                 _spriteBatch.End();
                 return;
             }
@@ -1655,6 +1712,25 @@ namespace AntigravityMoon
                 int playerScreenY = mapY + mapRange * scale;
                 _spriteBatch.Draw(_pixelTexture, new Rectangle(playerScreenX, playerScreenY, scale, scale), Color.Red);
             }
+            // Draw Save Button (Floppy)
+            if (_floppyIcon != null)
+            {
+                Rectangle saveBtnRect = new Rectangle(GraphicsDevice.Viewport.Width - 50, GraphicsDevice.Viewport.Height - 50, 40, 40);
+                
+                if (_saveAnimationTimer > 0)
+                {
+                    // Pulse Effect
+                    float scale = 1.0f + (float)Math.Sin(_saveAnimationTimer * Math.PI * 4) * 0.2f;
+                    int size = (int)(40 * scale);
+                    int offset = (size - 40) / 2;
+                    Rectangle animRect = new Rectangle(saveBtnRect.X - offset, saveBtnRect.Y - offset, size, size);
+                    _spriteBatch.Draw(_floppyIcon, animRect, Color.LimeGreen);
+                }
+                else
+                {
+                    _spriteBatch.Draw(_floppyIcon, saveBtnRect, Color.White);
+                }
+            }
             _spriteBatch.End();
             
             base.Draw(gameTime);
@@ -1664,6 +1740,180 @@ namespace AntigravityMoon
             Vector2 edge = end - start;
             float angle = (float)Math.Atan2(edge.Y, edge.X);
             spriteBatch.Draw(texture, new Rectangle((int)start.X, (int)start.Y, (int)edge.Length(), thickness), null, color, angle, new Vector2(0, 0.5f), SpriteEffects.None, 0);
+        }
+        private void SaveGame()
+        {
+            SaveData data = new SaveData();
+            
+            // Player Data
+            data.PlayerPosition = _player.Position;
+            data.Oxygen = _player.Oxygen;
+            data.Hunger = _player.Hunger;
+            
+            // Inventory
+            for (int y = 0; y < _player.Inventory.Rows; y++)
+            {
+                for (int x = 0; x < _player.Inventory.Cols; x++)
+                {
+                    string item = _player.Inventory.GetItem(x, y);
+                    if (item != null)
+                    {
+                        data.Inventory.Add(new SaveData.InventoryItemData
+                        {
+                            Name = item,
+                            Count = _player.Inventory.GetItemCount(x, y),
+                            X = x,
+                            Y = y
+                        });
+                    }
+                }
+            }
+            
+            // Structures
+            foreach (var entity in _entityManager.GetEntities())
+            {
+                if (entity is Structure s)
+                {
+                    data.Structures.Add(new SaveData.StructureData
+                    {
+                        Type = s.Type,
+                        X = s.Position.X,
+                        Y = s.Position.Y,
+                        RepairStage = s.RepairStage
+                    });
+                }
+            }
+            
+            try
+            {
+                data.Explored = _tileMap.GetExploredChunks();
+
+                string jsonString = JsonSerializer.Serialize(data);
+                File.WriteAllText(SaveFileName, jsonString);
+                System.Console.WriteLine("Game Saved!");
+                _saveExists = true;
+                _saveAnimationTimer = 0.5f; // Trigger animation
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine($"Save Failed: {ex.Message}");
+            }
+        }
+
+        private void LoadGame()
+        {
+            if (!File.Exists(SaveFileName)) return;
+
+            try
+            {
+                string jsonString = File.ReadAllText(SaveFileName);
+                SaveData data = JsonSerializer.Deserialize<SaveData>(jsonString);
+                
+                // Clear existing
+                // Clear existing entities
+                _entityManager.Clear();
+                
+                // Update existing player instead of creating new one (preserves any references)
+                _player.Position = data.PlayerPosition;
+                // Safety check: if position is 0,0 (invalid save?), move to spawn
+                if (_player.Position == Vector2.Zero)
+                {
+                    _player.Position = new Vector2(400, 304);
+                }
+                
+                _player.Oxygen = data.Oxygen;
+                _player.Hunger = data.Hunger;
+                _player.Inventory.Clear();
+                
+                // Snap Camera
+                _camera.Position = _player.Position;
+                
+                // Reset Intro/Menu state
+                _spaceshipPosition = new Vector2(400, 200); // Set to landed position just in case
+                _introTimer = 0f;
+
+                // Restore Inventory
+                if (data.Inventory != null)
+                {
+                    foreach (var item in data.Inventory)
+                    {
+                        // Direct add (ignoring stack checks since we know where it goes, or just AddItem)
+                        // If we stored X/Y, we should try to place it there, but Inventory AddItem finds first slot.
+                        // Simple for now: Just AddItem multiple times
+                        for (int i = 0; i < item.Count; i++)
+                        {
+                             _player.Inventory.AddItem(item.Name);
+                        }
+                    }
+                }
+                
+                // Restore Structures
+                if (data.Structures != null)
+                {
+                    foreach (var sData in data.Structures)
+                    {
+                        // Create local copy to modify
+                        var currentData = sData;
+
+                        // Repair logic for corrupted save (missing Type)
+                        if (string.IsNullOrEmpty(currentData.Type))
+                        {
+                            // Detect Spaceship by location (approx 400, 200)
+                            if (Math.Abs(currentData.X - 400) < 10 && Math.Abs(currentData.Y - 200) < 10)
+                            {
+                                currentData.Type = "Spaceship";
+                                currentData.RepairStage = 0; // Ensure it has a valid stage
+                            }
+                            else
+                            {
+                                // Unknown corrupted entity, skip it
+                                continue;
+                            }
+                        }
+
+                        Structure s = new Structure(new Vector2(currentData.X, currentData.Y), currentData.Type, 64, 64);
+                        
+                        // Set specific sizes
+                        if (currentData.Type == "Workbench") { s.Width = 32; s.Height = 32; }
+                        else if (currentData.Type == "HAB") { s.Width = 128; s.Height = 128; }
+                        else if (currentData.Type == "Spaceship") { s.Width = 64; s.Height = 64; } // Ensure Size
+                        
+                        s.RepairStage = currentData.RepairStage;
+                        _entityManager.AddEntity(s);
+                    }
+                }
+                
+                // Unstuck Logic: Check if player is inside the Spaceship
+                // Spaceship is at 400,200 size 64x64 => Rect 400,200,64,64
+                Rectangle shipRect = new Rectangle(400, 200, 64, 64);
+                Rectangle playerRect = new Rectangle((int)_player.Position.X, (int)_player.Position.Y, 32, 64); // Approx player size
+                
+                if (shipRect.Intersects(playerRect))
+                {
+                    // Move player down to safe spot
+                    _player.Position = new Vector2(400, 304);
+                    _camera.Position = _player.Position;
+                }
+                
+                // Add Player back to entity manager? 
+                // The main Update loop handles _player separately, but _entityManager holds other things.
+                // Wait, _player is NOT in _entityManager usually in this code base?
+                // Lines 120+ in Update: _player.Update(...) is called explicitly.
+                // Lines 247 in LoadContent: _player is created.
+                // So _player is separate. Safe.
+                
+                // Restore Exploration
+                if (data.Explored != null)
+                {
+                    _tileMap.LoadExploredChunks(data.Explored);
+                }
+
+                _currentGameState = GameState.Playing;
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine($"Load Failed: {ex.Message}");
+            }
         }
     }
 }

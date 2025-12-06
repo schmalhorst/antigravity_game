@@ -5,8 +5,8 @@ namespace AntigravityMoon
 {
     public class Structure : Entity
     {
-        public int Width { get; private set; }
-        public int Height { get; private set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
 
         // Farming
         public bool IsGrowing { get; private set; }
@@ -15,7 +15,7 @@ namespace AntigravityMoon
         public bool IsReadyToHarvest { get; private set; }
         
         // Repair System
-        public int RepairStage { get; private set; } = 0;
+        public int RepairStage { get; set; } = 0;
 
         public Structure(Vector2 position, string type, int width, int height) 
             : base(position, type, false, false, true) // Default: Solid, Not Harvestable
@@ -84,7 +84,7 @@ namespace AntigravityMoon
             spriteBatch.Draw(texture, bounds, color);
             
             // Draw Label only if hovering
-            if (bounds.Contains(mouseWorldPos))
+            if (bounds.Contains(mouseWorldPos) && !string.IsNullOrEmpty(Type))
             {
                 PixelTextRenderer.DrawText(spriteBatch, texture, Type, new Vector2(Position.X, Position.Y - 10), Color.White, 1);
             }

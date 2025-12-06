@@ -208,5 +208,59 @@ namespace AntigravityMoon
                 }
             }
         }
+        public List<SaveData.ExploredChunkData> GetExploredChunks()
+        {
+            List<SaveData.ExploredChunkData> savedChunks = new List<SaveData.ExploredChunkData>();
+            foreach (var kvp in _chunks)
+            {
+                Chunk chunk = kvp.Value;
+                bool hasExplored = false;
+                List<bool> tiles = new List<bool>();
+                
+                // Flatten 2D array
+                for (int x = 0; x < ChunkSize; x++)
+                {
+                    for (int y = 0; y < ChunkSize; y++)
+                    {
+                        if (chunk.Explored[x, y]) hasExplored = true;
+                        tiles.Add(chunk.Explored[x, y]);
+                    }
+                }
+
+                if (hasExplored)
+                {
+                    savedChunks.Add(new SaveData.ExploredChunkData
+                    {
+                        X = kvp.Key.X,
+                        Y = kvp.Key.Y,
+                        Tiles = tiles
+                    });
+                }
+            }
+            return savedChunks;
+        }
+
+        public void LoadExploredChunks(List<SaveData.ExploredChunkData> savedChunks)
+        {
+            foreach (var data in savedChunks)
+            {
+                Point chunkCoord = new Point(data.X, data.Y);
+                Chunk chunk = GetOrGenerateChunk(chunkCoord);
+                
+                // Unflatten
+                int i = 0;
+                for (int x = 0; x < ChunkSize; x++)
+                {
+                    for (int y = 0; y < ChunkSize; y++)
+                    {
+                        if (i < data.Tiles.Count)
+                        {
+                            chunk.Explored[x, y] = data.Tiles[i];
+                            i++;
+                        }
+                    }
+                }
+            }
+        }
     }
 }

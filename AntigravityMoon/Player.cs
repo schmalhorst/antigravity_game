@@ -29,9 +29,9 @@ namespace AntigravityMoon
         private Vector2 _currentMouseWorldPos;
         private MouseState _prevMouseState;
 
-        public float Hunger { get; private set; } = 100f;
+        public float Hunger { get; set; } = 100f;
         public float Health { get; private set; } = 100f;
-        public float Oxygen { get; private set; } = 100f;
+        public float Oxygen { get; set; } = 100f;
         public DeathCause LastDeathCause { get; private set; } = DeathCause.None;
         public bool IsDead { get; private set; } = false;
         private float _hungerDecayRate = 3.0f; // Per second
