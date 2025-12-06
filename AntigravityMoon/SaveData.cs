@@ -10,6 +10,7 @@ namespace AntigravityMoon
         public Vector2 PlayerPosition { get; set; }
         public float Oxygen { get; set; }
         public float Hunger { get; set; }
+        public int BackpackLevel { get; set; }
         public List<InventoryItemData> Inventory { get; set; } = new List<InventoryItemData>();
         public List<StructureData> Structures { get; set; } = new List<StructureData>();
         public List<ExploredChunkData> Explored { get; set; } = new List<ExploredChunkData>();

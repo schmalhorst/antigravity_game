@@ -26,6 +26,8 @@ namespace AntigravityMoon
         private const string SaveFileName = "colony_save.json";
         private float _saveAnimationTimer = 0f;
 
+        private Texture2D _vignetteTexture;
+
         public Game1()
         {
             _graphics = new GraphicsDeviceManager(this);
@@ -100,6 +102,8 @@ namespace AntigravityMoon
             _spaceshipTexture = _textures["spaceship"];
             _spaceshipPosition = new Vector2(400, -100); // Start off screen
             
+            LoadTexture("vignette");
+            if (_textures.ContainsKey("vignette")) _vignetteTexture = _textures["vignette"];
             if (_textures.ContainsKey("floppy")) _floppyIcon = _textures["floppy"];
         }
 
@@ -1257,6 +1261,22 @@ namespace AntigravityMoon
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 130, 400, 40), Color.Gray);
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 130, (int)(_player.Hunger * 4), 40), Color.Orange);
 
+                // Draw Vignette if danger
+                if (_vignetteTexture != null)
+                {
+                    float danger = 0f;
+                    if (_player.Health < 20) danger = Math.Max(danger, (20 - _player.Health) / 20f);
+                    if (_player.Oxygen < 20) danger = Math.Max(danger, (20 - _player.Oxygen) / 20f);
+                    if (_player.Hunger < 20) danger = Math.Max(danger, (20 - _player.Hunger) / 20f);
+
+                    if (danger > 0)
+                    {
+                        // Pulse
+                        float pulse = 0.8f + (float)Math.Sin(gameTime.TotalGameTime.TotalSeconds * 5) * 0.2f;
+                        float alpha = danger * pulse;
+                        _spriteBatch.Draw(_vignetteTexture, GraphicsDevice.Viewport.Bounds, Color.White * alpha);
+                    }
+                }
             // Draw Oxygen Bar
             PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "OXYJIN", new Vector2(20, 180), Color.White, 2);
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 210, 400, 40), Color.Gray);
@@ -1749,6 +1769,7 @@ namespace AntigravityMoon
             data.PlayerPosition = _player.Position;
             data.Oxygen = _player.Oxygen;
             data.Hunger = _player.Hunger;
+            data.BackpackLevel = _player.Inventory.UpgradeLevel;
             
             // Inventory
             for (int y = 0; y < _player.Inventory.Rows; y++)
@@ -1831,6 +1852,12 @@ namespace AntigravityMoon
                 // Reset Intro/Menu state
                 _spaceshipPosition = new Vector2(400, 200); // Set to landed position just in case
                 _introTimer = 0f;
+
+                // Restore Backpack Size
+                while (_player.Inventory.UpgradeLevel < data.BackpackLevel)
+                {
+                    _player.Inventory.Upgrade();
+                }
 
                 // Restore Inventory
                 if (data.Inventory != null)
