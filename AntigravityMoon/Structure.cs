@@ -12,7 +12,10 @@ namespace AntigravityMoon
         public bool IsGrowing { get; private set; }
         public float GrowthTimer { get; private set; }
         public string CropType { get; private set; }
-        public bool IsReadyToHarvest { get; private set; }
+        public bool IsReadyToHarvest => ReadyCount > 0;
+        public int PlantedCount { get; private set; }
+        public int ReadyCount { get; private set; }
+        public int MaxPlantedCount { get; private set; }
         
         // Repair System
         public int RepairStage { get; set; } = 0;
@@ -38,10 +41,17 @@ namespace AntigravityMoon
 
         public void StartGrowing(string crop)
         {
-            if (!IsGrowing && !IsReadyToHarvest)
+            if (PlantedCount == 0 && ReadyCount == 0) // Only reset if nothing is currently in the queue or ready
+            {
+                MaxPlantedCount = 0;
+            }
+            
+            PlantedCount++;
+            MaxPlantedCount++;
+            CropType = crop;
+            if (!IsGrowing)
             {
                 IsGrowing = true;
-                CropType = crop;
                 GrowthTimer = 0f;
             }
         }
@@ -53,17 +63,28 @@ namespace AntigravityMoon
                 GrowthTimer += dt;
                 if (GrowthTimer >= 10f) // 10 seconds to grow
                 {
-                    IsGrowing = false;
-                    IsReadyToHarvest = true;
+                    PlantedCount--;
+                    ReadyCount++;
+                    
+                    if (PlantedCount > 0)
+                    {
+                        GrowthTimer -= 10f;
+                    }
+                    else
+                    {
+                        IsGrowing = false;
+                        GrowthTimer = 0f;
+                        // Keep MaxPlantedCount as is until Harvest fully clears it or a new batch starts
+                    }
                 }
             }
         }
 
         public string Harvest()
         {
-            if (IsReadyToHarvest)
+            if (ReadyCount > 0)
             {
-                IsReadyToHarvest = false;
+                ReadyCount--;
                 return CropType;
             }
             return null;

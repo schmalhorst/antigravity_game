@@ -53,6 +53,7 @@ namespace AntigravityMoon
         
         // Edit Mode
         private Structure _movingStructure;
+        public bool JustPlacedStructure { get; private set; }
 
         public void StartPlacing(string structureType)
         {
@@ -60,12 +61,15 @@ namespace AntigravityMoon
             _structureToPlace = structureType;
             _heldEntity = null;
             _prevBuildKeyPressed = true; // Prevent immediate placement from menu click
+            JustPlacedStructure = false;
         }
 
         public void StartMoving(Structure structure)
         {
             _movingStructure = structure;
             _movingStructure.Position = new Vector2(-1000, -1000); // Hide original by moving it far away
+            _prevBuildKeyPressed = true; // Prevent immediate drop from menu click
+            JustPlacedStructure = false;
         }
 
         public void CancelBuild()
@@ -85,6 +89,7 @@ namespace AntigravityMoon
 
         public void Update(GameTime gameTime, EntityManager entityManager, Camera camera, TileMap tileMap, bool allowInput)
         {
+            JustPlacedStructure = false; // Reset every frame
             var kstate = Keyboard.GetState();
             var mstate = Mouse.GetState();
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -342,7 +347,7 @@ namespace AntigravityMoon
             // Ghost follows cursor (visuals handled in Draw)
             
             // Place with Left Click (Debounced)
-            if (mstate.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
+            if (mstate.LeftButton == ButtonState.Pressed && !_prevBuildKeyPressed)
             {
                 // Snap to grid
                 int x = ((int)mousePos.X / 32) * 32;
@@ -350,7 +355,10 @@ namespace AntigravityMoon
                 _movingStructure.Position = new Vector2(x, y);
                 
                 _movingStructure = null;
+                JustPlacedStructure = true;
             }
+            
+            _prevBuildKeyPressed = mstate.LeftButton == ButtonState.Pressed;
         }
 
         private void HandleInput(MouseState mstate, EntityManager entityManager, Vector2 mousePos)
@@ -405,6 +413,17 @@ namespace AntigravityMoon
                 if (textures != null && textures.ContainsKey(key))
                 {
                     ghostTexture = textures[key];
+                }
+
+                if (_movingStructure != null)
+                {
+                     // Draw glow outline for moving structure
+                     float pulse = 1.0f + (float)Math.Sin(DateTime.Now.TimeOfDay.TotalSeconds * 6) * 0.2f;
+                     Color glowColor = Color.DeepSkyBlue * pulse;
+
+                     // Need a generic pixel texture for outline... Wait, Player doesn't have pixel texture reference natively right now.
+                     // I will just use the ghostTexture itself but scaled out slightly.
+                     spriteBatch.Draw(ghostTexture, new Rectangle(x - 4, y - 4, w + 8, h + 8), glowColor * 0.5f);
                 }
 
                 spriteBatch.Draw(ghostTexture, new Rectangle(x, y, w, h), Color.White * 0.5f);

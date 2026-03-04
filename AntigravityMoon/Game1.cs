@@ -148,11 +148,12 @@ namespace AntigravityMoon
         public enum BuildModeState { None, Menu, Placing, Editing }
         private BuildModeState _buildModeState = BuildModeState.None;
         private string _selectedBuildStructure;
-        
+        private Backpack _interactedBackpack = null;
         // Edit Mode Context Menu
         private bool _showEditContextMenu = false;
         private Vector2 _editContextMenuPos;
-        private Structure _editTargetStructure;
+        private Structure _editTargetStructure = null;
+        private Structure _hoveredEditStructure = null;
 
         // Game State
         public enum GameState { StartMenu, Intro, Playing }
@@ -197,7 +198,6 @@ namespace AntigravityMoon
         
         // Death Drop
         private bool _showLootMenu = false;
-        private Backpack _interactedBackpack;
         private Texture2D _backpackTexture;
         private Texture2D _skullTexture;
         
@@ -678,7 +678,7 @@ namespace AntigravityMoon
                         // Plant Corn Button (Rect: X+50, Y+100, 300, 60) -> (710, 440, 300, 60)
                         if (new Rectangle(menuRect.X + 50, menuRect.Top + 100, 300, 60).Contains(mousePos))
                         {
-                            if (_interactedStructure != null && !_interactedStructure.IsGrowing && !_interactedStructure.IsReadyToHarvest)
+                            if (_interactedStructure != null)
                             {
                                 if (_player.Inventory.RemoveItems("Crystal", 1))
                                 {
@@ -691,19 +691,25 @@ namespace AntigravityMoon
                         {
                              if (_interactedStructure != null && _interactedStructure.IsReadyToHarvest)
                              {
-                                 // Check if we can add Corn (since that's what we grow)
-                                 if (_player.Inventory.CanAddItem("Corn"))
+                                 bool harvestedAny = false;
+                                 while (_interactedStructure.ReadyCount > 0)
                                  {
-                                     string crop = _interactedStructure.Harvest();
-                                     if (crop != null)
+                                     // Check if we can add Corn 
+                                     if (_player.Inventory.CanAddItem("Corn"))
                                      {
-                                         _player.Inventory.AddItem(crop);
+                                         string crop = _interactedStructure.Harvest();
+                                         if (crop != null)
+                                         {
+                                             _player.Inventory.AddItem(crop);
+                                             harvestedAny = true;
+                                         }
                                      }
-                                 }
-                                 else
-                                 {
-                                     // Inventory Full Warning
-                                     _inventoryFullTimer = 2.0f;
+                                     else
+                                     {
+                                         // Inventory Full Warning
+                                         _inventoryFullTimer = 2.0f;
+                                         break; // Stop harvesting if inventory is full
+                                     }
                                  }
                              }
                         }
@@ -770,10 +776,8 @@ namespace AntigravityMoon
             _player.Update(gameTime, _entityManager, _camera, _tileMap, !_showInventory);
             _camera.Position = _player.Position; // Follow player
 
-            if (!_showInventory)
+            if (!_showInventory && _buildModeState != BuildModeState.Editing) // Wrap normal interaction logic
             {
-
-
                 // Check for interactions
                 if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
                 {
@@ -1061,6 +1065,29 @@ namespace AntigravityMoon
                 // Handle Edit Mode Interactions
                 if (_buildModeState == BuildModeState.Editing)
                 {
+                    Vector2 mouseWorldPos = _camera.ScreenToWorld(new Vector2(currentMouseState.X, currentMouseState.Y));
+
+                    // 1. Calculate Hovered Structure
+                    _hoveredEditStructure = null;
+                    if (!_showEditContextMenu)
+                    {
+                        foreach (var entity in _entityManager.GetEntities())
+                        {
+                            if (entity is Structure s && s.Type != "Rock" && s.Type != "Crystal")
+                            {
+                                int w = s.Width > 0 ? s.Width : 32;
+                                int h = s.Height > 0 ? s.Height : 32;
+                                Rectangle bounds = new Rectangle((int)s.Position.X, (int)s.Position.Y, w, h);
+                                
+                                if (bounds.Contains(mouseWorldPos))
+                                {
+                                    _hoveredEditStructure = s;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
                     if (_showEditContextMenu)
                     {
                         // Handle Context Menu Clicks
@@ -1089,22 +1116,21 @@ namespace AntigravityMoon
                     }
                     else
                     {
-                        // Right Click on Structure to Open Menu
-                        if (currentMouseState.RightButton == ButtonState.Pressed && _prevMouseState.RightButton == ButtonState.Released)
+                        // Left Click on Structure to Open Menu
+                        if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released && !_player.JustPlacedStructure)
                         {
-                            Vector2 mouseWorldPos = _camera.ScreenToWorld(new Vector2(currentMouseState.X, currentMouseState.Y));
-                            foreach (var entity in _entityManager.GetEntities())
+                            if (_hoveredEditStructure != null)
                             {
-                                if (entity is Structure s && Vector2.Distance(s.Position, mouseWorldPos) < 32)
-                                {
-                                    _editTargetStructure = s;
-                                    _editContextMenuPos = new Vector2(currentMouseState.X, currentMouseState.Y);
-                                    _showEditContextMenu = true;
-                                    break;
-                                }
+                                _editTargetStructure = _hoveredEditStructure;
+                                _editContextMenuPos = new Vector2(currentMouseState.X, currentMouseState.Y);
+                                _showEditContextMenu = true;
                             }
                         }
                     }
+                }
+                else
+                {
+                    _hoveredEditStructure = null; // Clear if not in edit mode
                 }
                 
                 // Handle Placement Completion
@@ -1217,7 +1243,65 @@ namespace AntigravityMoon
                 // Calculate Mouse World Pos for Hover Logic
                 Vector2 mouseWorldPos = _camera.ScreenToWorld(new Vector2(Mouse.GetState().X, Mouse.GetState().Y));
                 
+                // Draw Entities
+                foreach (var entity in _entityManager.GetEntities())
+                {
+                    // Draw Hover Glow in Edit Mode
+                    bool isBeingEdited = (_showEditContextMenu && entity == _editTargetStructure);
+                    bool isHovered = (entity == _hoveredEditStructure);
+
+                    if (_buildModeState == BuildModeState.Editing && (isHovered || isBeingEdited))
+                    {
+                        Structure s = entity as Structure;
+                        if (s != null)
+                        {
+                            int w = s.Width > 0 ? s.Width : 32;
+                            int h = s.Height > 0 ? s.Height : 32;
+                            
+                            // Pulse effect for the outline
+                            float pulse = 1.0f + (float)Math.Sin(gameTime.TotalGameTime.TotalSeconds * 6) * 0.2f;
+                            Color glowColor = Color.DeepSkyBlue * pulse;
+
+                            _spriteBatch.Draw(_pixelTexture, new Rectangle((int)s.Position.X - 4, (int)s.Position.Y - 4, w + 8, h + 8), glowColor);
+                        }
+                    }
+                }
                 _entityManager.Draw(_spriteBatch, _textures, mouseWorldPos, _tileMap);
+                
+                // Draw Greenhouse Exterior Progress
+                foreach (var entity in _entityManager.GetEntities())
+                {
+                    if (entity is Structure s && s.Type == "Greenhouse")
+                    {
+                        int barWidth = 40;
+                        int barHeight = 8;
+                        int cw = s.Width > 0 ? s.Width : 32;
+                        int barX = (int)s.Position.X + (cw / 2) - (barWidth / 2);
+                        int barY = (int)s.Position.Y - 15;
+
+                        if (s.PlantedCount > 0 && s.MaxPlantedCount > 0)
+                        {
+                            // Calculate total progress
+                            float totalDuration = s.MaxPlantedCount * 10f;
+                            float elapsedDuration = ((s.MaxPlantedCount - s.PlantedCount) * 10f) + s.GrowthTimer;
+                            float progress = elapsedDuration / totalDuration;
+                            int fillWidth = (int)(barWidth * progress);
+
+                            // Draw Background
+                            _spriteBatch.Draw(_pixelTexture, new Rectangle(barX, barY, barWidth, barHeight), Color.DarkGray);
+                            // Draw Fill
+                            _spriteBatch.Draw(_pixelTexture, new Rectangle(barX, barY, fillWidth, barHeight), Color.Cyan);
+                            
+                            // Adjust barY for the Ready Text if drawn below
+                            barY -= 15; 
+                        }
+
+                        if (s.ReadyCount > 0)
+                        {
+                            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"READY: {s.ReadyCount}", new Vector2(barX - 10, barY), Color.LimeGreen, 1);
+                        }
+                    }
+                }
                 
                 // Draw Backpacks explicitly if needed, or let EntityManager handle it if we pass textures correctly?
                 // EntityManager.Draw iterates and calls entity.Draw(sb, texture, mouse).
@@ -1377,7 +1461,8 @@ namespace AntigravityMoon
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "GREENHOUSE", new Vector2(menuRect.X + 20, menuRect.Top + 20), Color.White, 4);
 
                 // Plant Button
-                Color plantColor = (_interactedStructure != null && !_interactedStructure.IsGrowing && !_interactedStructure.IsReadyToHarvest) ? Color.Yellow : Color.Gray;
+                bool canAfford = _player.Inventory.CountItem("Crystal") >= 1;
+                Color plantColor = canAfford ? Color.Yellow : Color.Gray;
                 Rectangle plantBtnRect = new Rectangle(menuRect.X + 50, menuRect.Top + 100, 300, 60);
                 _spriteBatch.Draw(_pixelTexture, plantBtnRect, plantColor);
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PLANT CORN", new Vector2(plantBtnRect.X + 10, plantBtnRect.Y + 20), Color.Black, 2);
@@ -1386,8 +1471,6 @@ namespace AntigravityMoon
                 if (_textures.ContainsKey("crystal"))
                 {
                     _spriteBatch.Draw(_textures["crystal"], new Rectangle(plantBtnRect.Right + 10, plantBtnRect.Y, 40, 40), Color.White);
-                    
-                    bool canAfford = _player.Inventory.CountItem("Crystal") >= 1;
                     Color costColor = canAfford ? Color.White : Color.Red;
                     PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "x1", new Vector2(plantBtnRect.Right + 60, plantBtnRect.Y + 10), costColor, 2);
                 }
@@ -1396,13 +1479,21 @@ namespace AntigravityMoon
                 Color harvestColor = (_interactedStructure != null && _interactedStructure.IsReadyToHarvest) ? Color.Green : Color.Gray;
                 Rectangle harvestBtnRect = new Rectangle(menuRect.X + 50, menuRect.Top + 200, 300, 60);
                 _spriteBatch.Draw(_pixelTexture, harvestBtnRect, harvestColor);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "HARVEST", new Vector2(harvestBtnRect.X + 10, harvestBtnRect.Y + 20), Color.Black, 2);
+                string harvestText = _interactedStructure != null && _interactedStructure.ReadyCount > 0 ? $"HARVEST ({_interactedStructure.ReadyCount})" : "HARVEST";
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, harvestText, new Vector2(harvestBtnRect.X + 10, harvestBtnRect.Y + 20), Color.Black, 2);
 
-                // Growth Timer
-                if (_interactedStructure != null && _interactedStructure.IsGrowing)
+                // Growth Timer and Planted Count
+                if (_interactedStructure != null)
                 {
-                    string timerText = "GROWING: " + (10 - (int)_interactedStructure.GrowthTimer).ToString() + "S";
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, timerText, new Vector2(menuRect.X + 50, menuRect.Top + 300), Color.White, 2);
+                    if (_interactedStructure.IsGrowing)
+                    {
+                        string timerText = "GROWING: " + (10 - (int)_interactedStructure.GrowthTimer).ToString() + "S";
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, timerText, new Vector2(menuRect.X + 50, menuRect.Top + 300), Color.White, 2);
+                    }
+                    if (_interactedStructure.PlantedCount > 0)
+                    {
+                         PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"PLANTED: {_interactedStructure.PlantedCount}", new Vector2(menuRect.X + 50, menuRect.Top + 340), Color.Cyan, 2);
+                    }
                 }
             }
 
@@ -1766,6 +1857,34 @@ namespace AntigravityMoon
                         else
                         {
                             _spriteBatch.Draw(_pixelTexture, new Rectangle(skullX, skullY, skullSize, skullSize), Color.Magenta);
+                        }
+                    }
+                    else if (entity is Structure s && s.Type != "Rock" && s.Type != "Crystal")
+                    {
+                        // Draw colored dots for major structures
+                        int entityTileX = (int)Math.Floor(entity.Position.X / TileMap.TileSize);
+                        int entityTileY = (int)Math.Floor(entity.Position.Y / TileMap.TileSize);
+
+                        int relX = entityTileX - playerTileX;
+                        int relY = entityTileY - playerTileY;
+
+                        // Check if in range to draw
+                        if (Math.Abs(relX) < mapRange && Math.Abs(relY) < mapRange)
+                        {
+                            int minimapX = mapX + (relX + mapRange) * scale;
+                            int minimapY = mapY + (relY + mapRange) * scale;
+
+                            Color structColor = Color.Yellow; // Default
+
+                            if (s.Type == "Spaceship") structColor = Color.Cyan;
+                            else if (s.Type == "Greenhouse") structColor = Color.LimeGreen;
+                            else if (s.Type == "Workbench") structColor = Color.Orange;
+
+                            int iconSize = scale * 2;
+                            int iconX = minimapX - (scale / 2);
+                            int iconY = minimapY - (scale / 2);
+
+                            _spriteBatch.Draw(_pixelTexture, new Rectangle(iconX, iconY, iconSize, iconSize), structColor);
                         }
                     }
                 }
