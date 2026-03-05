@@ -80,8 +80,8 @@ namespace AntigravityMoon
             if (_movingStructure != null)
             {
                  // Simplest: Just drop it at current mouse pos snapped.
-                 int x = ((int)_currentMouseWorldPos.X / 32) * 32;
-                 int y = ((int)_currentMouseWorldPos.Y / 32) * 32;
+                 int x = ((int)_currentMouseWorldPos.X / 40) * 40;
+                 int y = ((int)_currentMouseWorldPos.Y / 40) * 40;
                  _movingStructure.Position = new Vector2(x, y);
                  _movingStructure = null;
             }
@@ -133,13 +133,13 @@ namespace AntigravityMoon
                 
                 // Collision Detection
                 bool collision = false;
-                Rectangle playerRect = new Rectangle((int)nextPos.X, (int)nextPos.Y, 32, 32);
+                Rectangle playerRect = new Rectangle((int)nextPos.X, (int)nextPos.Y, 40, 40);
                 // Check for crater tiles (type 2) using proper rectangle intersection
-                // Player is 32x32, tiles are 48x48
+                // Player is 40x40, tiles are 48x48
                 int minTileX = (int)Math.Floor(nextPos.X / TileMap.TileSize);
-                int maxTileX = (int)Math.Floor((nextPos.X + 31) / TileMap.TileSize);
+                int maxTileX = (int)Math.Floor((nextPos.X + 39) / TileMap.TileSize);
                 int minTileY = (int)Math.Floor(nextPos.Y / TileMap.TileSize);
-                int maxTileY = (int)Math.Floor((nextPos.Y + 31) / TileMap.TileSize);
+                int maxTileY = (int)Math.Floor((nextPos.Y + 39) / TileMap.TileSize);
                 
                 for (int tx = minTileX; tx <= maxTileX && !collision; tx++)
                 {
@@ -165,13 +165,7 @@ namespace AntigravityMoon
                     {
                         if (entity.IsSolid)
                         {
-                            Rectangle entityRect = new Rectangle((int)entity.Position.X, (int)entity.Position.Y, 32, 32);
-                            // Structure might be bigger
-                            if (entity is Structure s)
-                            {
-                                entityRect.Width = s.Width;
-                                entityRect.Height = s.Height;
-                            }
+                            Rectangle entityRect = entity.GetBounds();
 
                             if (playerRect.Intersects(entityRect))
                             {
@@ -226,16 +220,22 @@ namespace AntigravityMoon
             if (mstate.LeftButton == ButtonState.Pressed && !_prevBuildKeyPressed) // Simple debounce check
             {
                 // Place structure
-                // Snap to grid (32x32)
-                int x = ((int)mousePos.X / 32) * 32;
-                int y = ((int)mousePos.Y / 32) * 32;
+                // Snap to grid (40x40)
+                int x = ((int)mousePos.X / 40) * 40;
+                int y = ((int)mousePos.Y / 40) * 40;
                 Vector2 pos = new Vector2(x, y);
+
+                int placeW = 80; int placeH = 80;
+                if (_structureToPlace == "Workbench") { placeW = 40; placeH = 40; }
+                else if (_structureToPlace == "HAB") { placeW = 80; placeH = 80; }
+                else if (_structureToPlace == "Machinery") { placeW = 160; placeH = 160; }
+                Rectangle buildRect = new Rectangle((int)pos.X, (int)pos.Y, placeW, placeH);
 
                 // Check if space is clear (simple check)
                 bool clear = true;
                 foreach (var entity in entityManager.GetEntities())
                 {
-                    if (Vector2.Distance(entity.Position, pos) < 32)
+                    if (entity.GetBounds().Intersects(buildRect))
                     {
                         clear = false;
                         break;
@@ -322,11 +322,11 @@ namespace AntigravityMoon
 
                     if (canBuild)
                     {
-                        int w = 64; // 2x2 tiles
-                        int h = 64;
-                        if (_structureToPlace == "Workbench") { w = 32; h = 32; }
-                        else if (_structureToPlace == "HAB") { w = 64; h = 64; }
-                        else if (_structureToPlace == "Machinery") { w = 128; h = 128; }
+                        int w = 80; // Default building size (+25% from 64)
+                        int h = 80;
+                        if (_structureToPlace == "Workbench") { w = 40; h = 40; }
+                        else if (_structureToPlace == "HAB") { w = 80; h = 80; }
+                        else if (_structureToPlace == "Machinery") { w = 160; h = 160; }
 
                         entityManager.AddEntity(new Structure(pos, _structureToPlace, w, h));
                         IsPlacing = false; // Finish placing
@@ -351,8 +351,8 @@ namespace AntigravityMoon
             if (mstate.LeftButton == ButtonState.Pressed && !_prevBuildKeyPressed)
             {
                 // Snap to grid
-                int x = ((int)mousePos.X / 32) * 32;
-                int y = ((int)mousePos.Y / 32) * 32;
+                int x = ((int)mousePos.X / 40) * 40;
+                int y = ((int)mousePos.Y / 40) * 40;
                 _movingStructure.Position = new Vector2(x, y);
                 
                 _movingStructure = null;
@@ -370,7 +370,7 @@ namespace AntigravityMoon
                 Entity target = null;
                 foreach (var entity in entityManager.GetEntities())
                 {
-                    if (Vector2.Distance(entity.Position, mousePos) < 32 && entity.IsHarvestable)
+                    if (entity.GetBounds().Contains(mousePos) && entity.IsHarvestable)
                     {
                         target = entity;
                         break;
@@ -394,14 +394,14 @@ namespace AntigravityMoon
 
         public void Draw(SpriteBatch spriteBatch, Texture2D playerTexture, Dictionary<string, Texture2D> textures)
         {
-            // Draw player at 32x32 size
-            spriteBatch.Draw(playerTexture, new Rectangle((int)Position.X, (int)Position.Y, 32, 32), Color.White);
+            // Draw player at 40x40 size (+25% from 32)
+            spriteBatch.Draw(playerTexture, new Rectangle((int)Position.X, (int)Position.Y, 40, 40), Color.White);
             
             // Draw Build Ghost (Placing OR Moving)
             if (IsPlacing || _movingStructure != null)
             {
-                int x = ((int)_currentMouseWorldPos.X / 32) * 32;
-                int y = ((int)_currentMouseWorldPos.Y / 32) * 32;
+                int x = ((int)_currentMouseWorldPos.X / 40) * 40;
+                int y = ((int)_currentMouseWorldPos.Y / 40) * 40;
                 
                 string structureType = IsPlacing ? _structureToPlace : _movingStructure.Type;
                 

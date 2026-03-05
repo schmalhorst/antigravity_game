@@ -284,7 +284,7 @@ namespace AntigravityMoon
 
                         // Create persistent spaceship structure
                         // Position, Type, Width, Height
-                        Structure ship = new Structure(_spaceshipPosition, "Spaceship", 64, 64);
+                        Structure ship = new Structure(_spaceshipPosition, "Spaceship", 96, 96);
                         ship.RepairStage = 1;
                         _entityManager.AddEntity(ship);
                         
@@ -456,7 +456,7 @@ namespace AntigravityMoon
             // Handle Loot Menu Input
             if (_showLootMenu && _interactedBackpack != null)
             {
-                if (currentKeyboardState.IsKeyDown(Keys.Escape) || Vector2.Distance(_player.Position, _interactedBackpack.Position) > 100)
+                if (currentKeyboardState.IsKeyDown(Keys.Escape) || !_interactedBackpack.GetBounds().Intersects(new Rectangle((int)_player.Position.X - 60, (int)_player.Position.Y - 60, 160, 160)))
                 {
                     _showLootMenu = false;
                     _interactedBackpack = null;
@@ -634,7 +634,7 @@ namespace AntigravityMoon
                     _showSpaceshipMenu = false;
                     _interactedStructure = null;
                 }
-                else if (_interactedStructure != null && Vector2.Distance(_player.Position, _interactedStructure.Position) > 100)
+                else if (_interactedStructure != null && !_interactedStructure.GetBounds().Intersects(new Rectangle((int)_player.Position.X - 60, (int)_player.Position.Y - 60, 160, 160)))
                 {
                     _showWorkbenchMenu = false;
                     _showGreenhouseMenu = false;
@@ -783,7 +783,7 @@ namespace AntigravityMoon
             _player.Update(gameTime, _entityManager, _camera, _tileMap, !_showInventory);
             _camera.Position = _player.Position; // Follow player
 
-            if (!_showInventory && _buildModeState != BuildModeState.Editing) // Wrap normal interaction logic
+            if (!_showInventory && _buildModeState != BuildModeState.Editing && !_showWorkbenchMenu && !_showGreenhouseMenu && !_showSpaceshipMenu && !_showLootMenu) // Wrap normal interaction logic
             {
                 // Check for interactions
                 if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
@@ -810,12 +810,12 @@ namespace AntigravityMoon
                     {
                         foreach (var entity in _entityManager.GetEntities())
                     {
-                        if (entity is Structure s && Vector2.Distance(s.Position, mouseWorldPos) < 40)
+                        if (entity is Structure s && s.GetBounds().Contains(mouseWorldPos))
                         {
                             // Add Laser for object interaction too
                             _lasers.Add(new Laser { Start = _player.Position + new Vector2(16, 16), End = mouseWorldPos, Duration = 0.2f, MaxDuration = 0.2f });
 
-                            if (Vector2.Distance(_player.Position, s.Position) < 100) // Must be close
+                            if (s.GetBounds().Intersects(new Rectangle((int)_player.Position.X - 60, (int)_player.Position.Y - 60, 160, 160))) // Must be close
                             {
                                 if (s.Type == "Workbench")
                                 {
@@ -854,9 +854,9 @@ namespace AntigravityMoon
                                 }
                             }
                         }
-                        else if (entity is Backpack bp && Vector2.Distance(bp.Position, mouseWorldPos) < 40)
+                        else if (entity is Backpack bp && bp.GetBounds().Contains(mouseWorldPos))
                         {
-                             if (Vector2.Distance(_player.Position, bp.Position) < 100)
+                             if (bp.GetBounds().Intersects(new Rectangle((int)_player.Position.X - 60, (int)_player.Position.Y - 60, 160, 160)))
                              {
                                  _showLootMenu = true;
                                  _interactedBackpack = bp;
@@ -1242,8 +1242,8 @@ namespace AntigravityMoon
             
             if (_currentGameState == GameState.Intro)
             {
-                 // Draw Spaceship
-                 _spriteBatch.Draw(_spaceshipTexture, new Rectangle((int)_spaceshipPosition.X, (int)_spaceshipPosition.Y, 64, 64), Color.White);
+                 // Draw the spaceship dropping
+                 _spriteBatch.Draw(_spaceshipTexture, new Rectangle((int)_spaceshipPosition.X, (int)_spaceshipPosition.Y, 96, 96), Color.White);
             }
             else if (_currentGameState == GameState.Playing)
             {
@@ -1681,28 +1681,29 @@ namespace AntigravityMoon
                 // Draw "COLLECT ALL" Button
                 Rectangle collectAllBtn = new Rectangle(GraphicsDevice.Viewport.Width / 2 + 220, GraphicsDevice.Viewport.Height / 2 - 150, 150, 40);
                 
-                // Check if player has space for all items
-                int totalItems = 0;
-                for (int y = 0; y < _interactedBackpack.Storage.Rows; y++)
+                // Check if player has space for all items by simulating the transfer
+                bool canCollectAll = true;
+                Inventory tempInv = _player.Inventory.Clone();
+                
+                for (int y = 0; y < _interactedBackpack.Storage.Rows && canCollectAll; y++)
                 {
-                    for (int x = 0; x < _interactedBackpack.Storage.Cols; x++)
+                    for (int x = 0; x < _interactedBackpack.Storage.Cols && canCollectAll; x++)
                     {
-                        if (_interactedBackpack.Storage.GetItem(x, y) != null)
-                            totalItems++;
+                        string item = _interactedBackpack.Storage.GetItem(x, y);
+                        if (item != null)
+                        {
+                            int count = _interactedBackpack.Storage.GetItemCount(x, y);
+                            for (int i = 0; i < count; i++)
+                            {
+                                if (!tempInv.AddItem(item))
+                                {
+                                    canCollectAll = false;
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
-                
-                int emptySlots = 0;
-                for (int y = 0; y < _player.Inventory.Rows; y++)
-                {
-                    for (int x = 0; x < _player.Inventory.Cols; x++)
-                    {
-                        if (_player.Inventory.GetItem(x, y) == null)
-                            emptySlots++;
-                    }
-                }
-                
-                bool canCollectAll = emptySlots >= totalItems;
                 Color btnColor = canCollectAll ? Color.Green : Color.Gray;
                 Color textColor = canCollectAll ? Color.White : Color.DarkGray;
                 
@@ -1934,7 +1935,8 @@ namespace AntigravityMoon
             SaveData data = new SaveData();
             
             // Player Data
-            data.PlayerPosition = _player.Position;
+            data.PlayerX = _player.Position.X;
+            data.PlayerY = _player.Position.Y;
             data.Oxygen = _player.Oxygen;
             data.Hunger = _player.Hunger;
             data.BackpackLevel = _player.Inventory.UpgradeLevel;
@@ -2003,7 +2005,7 @@ namespace AntigravityMoon
                 _entityManager.Clear();
                 
                 // Update existing player instead of creating new one (preserves any references)
-                _player.Position = data.PlayerPosition;
+                _player.Position = new Vector2(data.PlayerX, data.PlayerY);
                 // Safety check: if position is 0,0 (invalid save?), move to spawn
                 if (_player.Position == Vector2.Zero)
                 {
@@ -2064,13 +2066,13 @@ namespace AntigravityMoon
                             }
                         }
 
-                        Structure s = new Structure(new Vector2(currentData.X, currentData.Y), currentData.Type, 64, 64);
+                        Structure s = new Structure(new Vector2(currentData.X, currentData.Y), currentData.Type, 80, 80);
                         
                         // Set specific sizes
-                        if (currentData.Type == "Workbench") { s.Width = 32; s.Height = 32; }
-                        else if (currentData.Type == "HAB") { s.Width = 64; s.Height = 64; }
-                        else if (currentData.Type == "Machinery") { s.Width = 128; s.Height = 128; }
-                        else if (currentData.Type == "Spaceship") { s.Width = 64; s.Height = 64; } // Ensure Size
+                        if (currentData.Type == "Workbench") { s.Width = 40; s.Height = 40; }
+                        else if (currentData.Type == "HAB") { s.Width = 80; s.Height = 80; }
+                        else if (currentData.Type == "Machinery") { s.Width = 160; s.Height = 160; }
+                        else if (currentData.Type == "Spaceship") { s.Width = 96; s.Height = 96; } // Ensure Size
                         
                         s.RepairStage = currentData.RepairStage;
                         _entityManager.AddEntity(s);

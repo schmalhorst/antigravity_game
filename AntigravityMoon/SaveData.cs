@@ -7,7 +7,8 @@ namespace AntigravityMoon
     [Serializable]
     public class SaveData
     {
-        public Vector2 PlayerPosition { get; set; }
+        public float PlayerX { get; set; }
+        public float PlayerY { get; set; }
         public float Oxygen { get; set; }
         public float Hunger { get; set; }
         public int BackpackLevel { get; set; }

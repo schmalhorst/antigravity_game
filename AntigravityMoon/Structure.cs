@@ -90,13 +90,16 @@ namespace AntigravityMoon
             return null;
         }
 
-        public override void Draw(SpriteBatch spriteBatch, Texture2D texture, Vector2 mouseWorldPos)
+        public override Rectangle GetBounds()
         {
-            // Draw structure as a colored rectangle
             int w = Width > 0 ? Width : 32;
             int h = Height > 0 ? Height : 32;
-            
-            Rectangle bounds = new Rectangle((int)Position.X, (int)Position.Y, w, h);
+            return new Rectangle((int)Position.X, (int)Position.Y, w, h);
+        }
+
+        public override void Draw(SpriteBatch spriteBatch, Texture2D texture, Vector2 mouseWorldPos)
+        {
+            Rectangle bounds = GetBounds();
 
             Color color = Color.White;
             // if (Type == "Greenhouse") color = Color.LimeGreen; // Removed tint
