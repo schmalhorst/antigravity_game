@@ -300,11 +300,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/johnschmalhorst/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
+      "projectUniqueName": "/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
       "projectName": "AntigravityMoon",
-      "projectPath": "/Users/johnschmalhorst/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
+      "projectPath": "/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
       "packagesPath": "/Users/johnschmalhorst/.nuget/packages/",
-      "outputPath": "/Users/johnschmalhorst/antigravity_game/AntigravityMoon/obj/",
+      "outputPath": "/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/Users/johnschmalhorst/.nuget/NuGet/NuGet.Config"

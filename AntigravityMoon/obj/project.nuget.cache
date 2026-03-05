@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "R/+sM2WS3x0=",
+  "dgSpecHash": "acqV1zVBQp0=",
   "success": true,
-  "projectFilePath": "/Users/johnschmalhorst/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
+  "projectFilePath": "/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
   "expectedPackageFiles": [
     "/Users/johnschmalhorst/.nuget/packages/monogame.content.builder.task/3.8.4.1/monogame.content.builder.task.3.8.4.1.nupkg.sha512",
     "/Users/johnschmalhorst/.nuget/packages/monogame.framework.desktopgl/3.8.4.1/monogame.framework.desktopgl.3.8.4.1.nupkg.sha512",

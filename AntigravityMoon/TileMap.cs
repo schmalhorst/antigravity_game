@@ -98,6 +98,12 @@ namespace AntigravityMoon
                         
                         bool isDarkSide = chunkCoord.X > 2000; // X > 96,000 pixels
 
+                        // Don't spawn items too close to start location
+                        if (Vector2.Distance(worldPos, Vector2.Zero) < 800f)
+                        {
+                            continue;
+                        }
+
                         if (isDarkSide)
                         {
                             // Dark Side: More Crystals

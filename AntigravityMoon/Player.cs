@@ -325,7 +325,8 @@ namespace AntigravityMoon
                         int w = 64; // 2x2 tiles
                         int h = 64;
                         if (_structureToPlace == "Workbench") { w = 32; h = 32; }
-                        else if (_structureToPlace == "HAB") { w = 128; h = 128; }
+                        else if (_structureToPlace == "HAB") { w = 64; h = 64; }
+                        else if (_structureToPlace == "Machinery") { w = 128; h = 128; }
 
                         entityManager.AddEntity(new Structure(pos, _structureToPlace, w, h));
                         IsPlacing = false; // Finish placing

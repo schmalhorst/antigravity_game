@@ -142,6 +142,15 @@ namespace AntigravityMoon
             return _items[x, y].ItemName;
         }
 
+        public bool SetItem(int x, int y, string itemName, int count)
+        {
+            if (x < 0 || x >= Cols || y < 0 || y >= Rows) return false;
+            
+            _items[x, y].ItemName = itemName;
+            _items[x, y].Count = count;
+            return true;
+        }
+
         public void RemoveItem(int x, int y)
         {
             if (x >= 0 && x < Cols && y >= 0 && y < Rows)
@@ -265,50 +274,50 @@ namespace AntigravityMoon
             {
                 for (int x = 0; x < Cols; x++)
                 {
-                    if (_items[x, y].ItemName != null)
-                    {
-                        if (!totalCounts.ContainsKey(_items[x, y].ItemName))
-                        {
-                            totalCounts[_items[x, y].ItemName] = 0;
-                        }
-                        totalCounts[_items[x, y].ItemName] += _items[x, y].Count;
-                    }
+                     if (_items[x, y].ItemName != null)
+                     {
+                         string item = _items[x, y].ItemName;
+                         if (!totalCounts.ContainsKey(item))
+                         {
+                             totalCounts[item] = 0;
+                         }
+                         totalCounts[item] += _items[x, y].Count;
+                     }
                 }
             }
 
             // 2. Clear Inventory
             Clear();
 
-            // 3. Re-add items (sorted alphabetically keys)
+            // 3. Re-add items sorted alphabetically
             List<string> sortedKeys = new List<string>(totalCounts.Keys);
             sortedKeys.Sort();
 
             foreach (string item in sortedKeys)
             {
-                int count = totalCounts[item];
-                while (count > 0)
-                {
-                    // Find first empty slot
-                    bool added = false;
-                    for (int y = 0; y < Rows; y++)
-                    {
-                        for (int x = 0; x < Cols; x++)
-                        {
-                            if (_items[x, y].ItemName == null)
-                            {
-                                int amountToAdd = Math.Min(count, MaxStack);
-                                _items[x, y].ItemName = item;
-                                _items[x, y].Count = amountToAdd;
-                                count -= amountToAdd;
-                                added = true;
-                                break;
-                            }
-                        }
-                        if (added) break;
-                    }
-                    
-                    if (!added) break; // Inventory full (shouldn't happen if we just condensed)
-                }
+                 int count = totalCounts[item];
+                 while (count > 0)
+                 {
+                      int addAmount = Math.Min(count, MaxStack);
+                      
+                      // Find first empty slot directly since we know we just cleared and stack logic isn't needed here (we are doing it cleanly)
+                      bool placed = false;
+                      for (int y = 0; y < Rows && !placed; y++)
+                      {
+                          for (int x = 0; x < Cols && !placed; x++)
+                          {
+                              if (_items[x, y].ItemName == null)
+                              {
+                                  _items[x, y].ItemName = item;
+                                  _items[x, y].Count = addAmount;
+                                  count -= addAmount;
+                                  placed = true;
+                              }
+                          }
+                      }
+                      
+                      if (!placed) break; // Inventory ran out of space (should be mathematically impossible given we only cleared)
+                 }
             }
         }
 

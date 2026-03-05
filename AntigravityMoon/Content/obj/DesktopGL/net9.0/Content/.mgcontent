@@ -4,19 +4,29 @@
   <Platform>DesktopGL</Platform>
   <Config />
   <SourceFiles>
-    <File>/Users/johnschmalhorst/antigravity_game/AntigravityMoon/Content/astronaut.png</File>
-    <File>/Users/johnschmalhorst/antigravity_game/AntigravityMoon/Content/rock.png</File>
-    <File>/Users/johnschmalhorst/antigravity_game/AntigravityMoon/Content/moon_ground.png</File>
-    <File>/Users/johnschmalhorst/antigravity_game/AntigravityMoon/Content/greenhouse.png</File>
-    <File>/Users/johnschmalhorst/antigravity_game/AntigravityMoon/Content/workbench.png</File>
-    <File>/Users/johnschmalhorst/antigravity_game/AntigravityMoon/Content/corn.png</File>
-    <File>/Users/johnschmalhorst/antigravity_game/AntigravityMoon/Content/crystal.png</File>
-    <File>/Users/johnschmalhorst/antigravity_game/AntigravityMoon/Content/spaceship.png</File>
-    <File>/Users/johnschmalhorst/antigravity_game/AntigravityMoon/Content/metro_alien.png</File>
-    <File>/Users/johnschmalhorst/antigravity_game/AntigravityMoon/Content/backpack.png</File>
-    <File>/Users/johnschmalhorst/antigravity_game/AntigravityMoon/Content/skull_crossbones.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/astronaut.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/rock.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/moon_ground.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/greenhouse.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/workbench.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/corn.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/crystal.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/spaceship.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/metro_alien.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/backpack.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/skull_crossbones.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/reactor.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/reactor_empty.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/spaceship_broken1.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/spaceship_broken2.png</File>
+    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/spaceship_broken3.png</File>
   </SourceFiles>
   <DestFiles>
+    <File xsi:nil="true" />
+    <File xsi:nil="true" />
+    <File xsi:nil="true" />
+    <File xsi:nil="true" />
+    <File xsi:nil="true" />
     <File xsi:nil="true" />
     <File xsi:nil="true" />
     <File xsi:nil="true" />

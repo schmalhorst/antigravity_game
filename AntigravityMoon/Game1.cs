@@ -84,14 +84,19 @@ namespace AntigravityMoon
             LoadTexture("greenhouse");
             LoadTexture("workbench");
             LoadTexture("corn");
-            LoadTexture("spaceship");
+            LoadTexture("astronaut");
             LoadTexture("metro_alien");
             
-            // New Buildings
-            LoadTexture("reactor");
-            LoadTexture("hab");
+            // Structures
+            LoadTexture("greenhouse");
+            LoadTexture("spaceship");
+            LoadTexture("spaceship_broken1");
+            LoadTexture("spaceship_broken2");
+            LoadTexture("spaceship_broken3");
+            LoadTexture("mineral");
             LoadTexture("bionic_tech");
-            LoadTexture("machinery");
+            LoadTexture("reactor");
+            LoadTexture("reactor_empty");
             LoadTexture("radar");
             LoadTexture("wormhole");
             LoadTexture("floppy");
@@ -279,7 +284,9 @@ namespace AntigravityMoon
 
                         // Create persistent spaceship structure
                         // Position, Type, Width, Height
-                        _entityManager.AddEntity(new Structure(_spaceshipPosition, "Spaceship", 64, 64));
+                        Structure ship = new Structure(_spaceshipPosition, "Spaceship", 64, 64);
+                        ship.RepairStage = 1;
+                        _entityManager.AddEntity(ship);
                         
                         // Ensure player is at spawn point (304) which is below the ship (200+64=264)
                         _player.Position = new Vector2(400, 304);
@@ -1073,7 +1080,7 @@ namespace AntigravityMoon
                     {
                         foreach (var entity in _entityManager.GetEntities())
                         {
-                            if (entity is Structure s && s.Type != "Rock" && s.Type != "Crystal")
+                            if (entity is Structure s && s.Type != "Rock" && s.Type != "Crystal" && s.Type != "Spaceship")
                             {
                                 int w = s.Width > 0 ? s.Width : 32;
                                 int h = s.Height > 0 ? s.Height : 32;
@@ -1606,7 +1613,6 @@ namespace AntigravityMoon
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "DELETE", new Vector2(_editContextMenuPos.X + 5, _editContextMenuPos.Y + 25), Color.Red, 1);
             }
 
-
                 // Draw Spaceship Menu
             // Draw Spaceship Menu
             if (_showSpaceshipMenu)
@@ -2021,17 +2027,15 @@ namespace AntigravityMoon
                     _player.Inventory.Upgrade();
                 }
 
-                // Restore Inventory
+                // Restore Inventory to exact positions
                 if (data.Inventory != null)
                 {
                     foreach (var item in data.Inventory)
                     {
-                        // Direct add (ignoring stack checks since we know where it goes, or just AddItem)
-                        // If we stored X/Y, we should try to place it there, but Inventory AddItem finds first slot.
-                        // Simple for now: Just AddItem multiple times
-                        for (int i = 0; i < item.Count; i++)
+                        // Ensure it fits in bounds just in case
+                        if (item.X >= 0 && item.X < _player.Inventory.Cols && item.Y >= 0 && item.Y < _player.Inventory.Rows)
                         {
-                             _player.Inventory.AddItem(item.Name);
+                             _player.Inventory.SetItem(item.X, item.Y, item.Name, item.Count);
                         }
                     }
                 }
@@ -2064,7 +2068,8 @@ namespace AntigravityMoon
                         
                         // Set specific sizes
                         if (currentData.Type == "Workbench") { s.Width = 32; s.Height = 32; }
-                        else if (currentData.Type == "HAB") { s.Width = 128; s.Height = 128; }
+                        else if (currentData.Type == "HAB") { s.Width = 64; s.Height = 64; }
+                        else if (currentData.Type == "Machinery") { s.Width = 128; s.Height = 128; }
                         else if (currentData.Type == "Spaceship") { s.Width = 64; s.Height = 64; } // Ensure Size
                         
                         s.RepairStage = currentData.RepairStage;

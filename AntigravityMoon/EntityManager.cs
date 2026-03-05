@@ -55,6 +55,14 @@ namespace AntigravityMoon
                 }
 
                 string key = entity.Type.ToLower();
+                if (entity is Structure s && key == "spaceship")
+                {
+                    if (s.RepairStage <= 1) key = "spaceship_broken1";
+                    else if (s.RepairStage == 2) key = "spaceship_broken2";
+                    else if (s.RepairStage == 3) key = "spaceship_broken3";
+                    else key = "spaceship";
+                }
+
                 if (textures != null && textures.ContainsKey(key))
                 {
                     entity.Draw(spriteBatch, textures[key], mouseWorldPos);
