@@ -68,7 +68,7 @@ dotnet run
 **Development**: Created with Antigravity AI
 **Creative Direction**: SCHMALLY & Kids
 **Assets & Design Input**: The SCHMALLY Family
-**Additional Contributions**: TheHorn3t, Jinlithin, Ox, Snorge and fam
+**Additional Contributions**: TheHorn3t, Jinlithin, Ox, Snorge and fam, Daveeed and fam (dcibarra)
 **Framework**: MonoGame
 
 ## License
