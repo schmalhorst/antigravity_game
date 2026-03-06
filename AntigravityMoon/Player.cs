@@ -40,6 +40,17 @@ namespace AntigravityMoon
         private float _oxygenDecayRate = 0.5f; // Per second (200s supply)
         private Vector2 _spawnPoint;
 
+        public int SuitLevel { get; set; } = 1;
+
+        public class ActiveBuff
+        {
+            public int HungerPercentage { get; set; }
+            public int OxygenPercentage { get; set; }
+            public float TimeRemaining { get; set; }
+        }
+
+        private List<ActiveBuff> _activeBuffs = new List<ActiveBuff>();
+
         public Player(Vector2 startPosition)
         {
             _spawnPoint = startPosition;
@@ -94,6 +105,16 @@ namespace AntigravityMoon
             var mstate = Mouse.GetState();
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
+            // Buff Tick
+            for (int i = _activeBuffs.Count - 1; i >= 0; i--)
+            {
+                _activeBuffs[i].TimeRemaining -= dt;
+                if (_activeBuffs[i].TimeRemaining <= 0)
+                {
+                    _activeBuffs.RemoveAt(i);
+                }
+            }
+
             // Movement
             Vector2 movement = Vector2.Zero;
             if (kstate.IsKeyDown(Keys.W)) movement.Y -= 1;
@@ -104,7 +125,8 @@ namespace AntigravityMoon
             if (movement != Vector2.Zero)
             {
                 // Hunger Decay (Only when moving)
-                Hunger -= _hungerDecayRate * dt;
+                float currentHungerDecayRate = _hungerDecayRate * (1.0f - (GetTotalHungerBuff() / 100f));
+                Hunger -= currentHungerDecayRate * dt;
                 if (Hunger <= 0)
                 {
                     Hunger = 0;
@@ -206,7 +228,8 @@ namespace AntigravityMoon
             _prevMouseState = mstate;
 
             // Oxygen Decay (Always)
-            Oxygen -= _oxygenDecayRate * dt;
+            float currentOxygenDecayRate = _oxygenDecayRate * (1.0f - (GetTotalOxygenBuff() / 100f));
+            Oxygen -= currentOxygenDecayRate * dt;
             if (Oxygen <= 0)
             {
                 Oxygen = 0;
@@ -461,6 +484,44 @@ namespace AntigravityMoon
                 LastDeathCause = DeathCause.Alien;
                 Die();
             }
+        }
+
+        public int GetTotalHungerBuff()
+        {
+            int total = 0;
+            foreach (var buff in _activeBuffs) total += buff.HungerPercentage;
+            return total;
+        }
+
+        public int GetTotalOxygenBuff()
+        {
+            int total = 0;
+            foreach (var buff in _activeBuffs) total += buff.OxygenPercentage;
+            return total;
+        }
+
+        public void AddBuff(int hungerReward, int oxygenReward, float duration)
+        {
+            if (hungerReward == 0 && oxygenReward == 0) return;
+
+            // If at max capacity based on SuitLevel, remove the buff with shortest remaining time
+            if (_activeBuffs.Count >= SuitLevel)
+            {
+                ActiveBuff shortest = _activeBuffs[0];
+                foreach (var buff in _activeBuffs)
+                {
+                    if (buff.TimeRemaining < shortest.TimeRemaining)
+                        shortest = buff;
+                }
+                _activeBuffs.Remove(shortest);
+            }
+
+            _activeBuffs.Add(new ActiveBuff
+            {
+                HungerPercentage = hungerReward,
+                OxygenPercentage = oxygenReward,
+                TimeRemaining = duration
+            });
         }
 
         private void Respawn()

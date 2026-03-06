@@ -367,11 +367,12 @@ namespace AntigravityMoon
             };
         }
 
-        public static void DrawText(SpriteBatch spriteBatch, Texture2D texture, string text, Vector2 position, Color color, int scale = 1)
+        public static void DrawText(SpriteBatch spriteBatch, Texture2D texture, string text, Vector2 position, Color color, float scale = 1f)
         {
             if (_charMap == null) Init();
 
-            int xOffset = 0;
+            float actualScale = scale * 1.5f;
+            float xOffset = 0;
             text = text.ToUpper();
 
             foreach (char c in text)
@@ -385,15 +386,15 @@ namespace AntigravityMoon
                         {
                             if (pixels[y, x])
                             {
-                                spriteBatch.Draw(texture, new Rectangle((int)position.X + xOffset + x * scale, (int)position.Y + y * scale, scale, scale), color);
+                                spriteBatch.Draw(texture, new Rectangle((int)(position.X + xOffset + x * actualScale), (int)(position.Y + y * actualScale), (int)actualScale, (int)actualScale), color);
                             }
                         }
                     }
-                    xOffset += 4 * scale; // 3 width + 1 spacing
+                    xOffset += 4 * actualScale; // 3 width + 1 spacing
                 }
                 else
                 {
-                    xOffset += 4 * scale;
+                    xOffset += 4 * actualScale;
                 }
             }
         }

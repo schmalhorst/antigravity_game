@@ -39,7 +39,9 @@ namespace AntigravityMoon
             RepairStage++;
         }
 
-        public void StartGrowing(string crop)
+        public float MaxGrowthTimer { get; private set; } // The target time for a crop to grow
+
+        public void StartGrowing(string crop, float maxGrowthTime = 10f)
         {
             if (PlantedCount == 0 && ReadyCount == 0) // Only reset if nothing is currently in the queue or ready
             {
@@ -53,6 +55,7 @@ namespace AntigravityMoon
             {
                 IsGrowing = true;
                 GrowthTimer = 0f;
+                MaxGrowthTimer = maxGrowthTime;
             }
         }
 
@@ -61,14 +64,15 @@ namespace AntigravityMoon
             if (IsGrowing)
             {
                 GrowthTimer += dt;
-                if (GrowthTimer >= 10f) // 10 seconds to grow
+                if (GrowthTimer >= MaxGrowthTimer) // Dynamic growth time
+
                 {
                     PlantedCount--;
                     ReadyCount++;
                     
                     if (PlantedCount > 0)
                     {
-                        GrowthTimer -= 10f;
+                        GrowthTimer -= MaxGrowthTimer;
                     }
                     else
                     {

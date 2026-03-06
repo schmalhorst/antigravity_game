@@ -1,0 +1,26 @@
+[
+    {
+        "Id": "Corn",
+        "Name": "Crispy Corn",
+        "Costs": {
+            "Crystal": 1
+        },
+        "GrowthTime": 10.0,
+        "ColorHex": "#FFFF00",
+        "HungerBuffReward": 0,
+        "OxygenBuffReward": 0,
+        "BuffDuration": 0.0
+    },
+    {
+        "Id": "Potato",
+        "Name": "Raw Potato",
+        "Costs": {
+            "Rock": 2
+        },
+        "GrowthTime": 10.0,
+        "ColorHex": "#8B4513",
+        "HungerBuffReward": 5,
+        "OxygenBuffReward": 0,
+        "BuffDuration": 60.0
+    }
+]

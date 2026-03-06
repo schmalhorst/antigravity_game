@@ -2,6 +2,8 @@
 using System.IO;
 using System.Text.Json;
 using Microsoft.Xna.Framework;
+using System.IO;
+using System.Text.Json;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
@@ -104,6 +106,28 @@ namespace AntigravityMoon
             _textures["backpack"] = Content.Load<Texture2D>("backpack");
             _textures["skull_crossbones"] = Content.Load<Texture2D>("skull_crossbones");
             
+            // Try loading crops.json
+            string cropsPath = Path.Combine(Content.RootDirectory, "crops.json");
+            if (File.Exists(cropsPath))
+            {
+                try
+                {
+                    string jsonString = File.ReadAllText(cropsPath);
+                    _crops = JsonSerializer.Deserialize<List<CropData>>(jsonString);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading crops.json: {ex.Message}");
+                }
+            }
+            
+            // Generate Textures for Crops if they don't exist
+            foreach (var crop in _crops)
+            {
+               try { _textures[crop.Id.ToLower()] = Content.Load<Texture2D>(crop.Id.ToLower()); }
+               catch { /* Missing texture, fallback logic in drawing */ }
+            }
+            
             _backpackTexture = _textures["backpack"];
             _skullTexture = _textures["skull_crossbones"];
             _spaceshipTexture = _textures["spaceship"];
@@ -140,6 +164,7 @@ namespace AntigravityMoon
         // UI State
         private bool _showWorkbenchMenu = false;
         private bool _showGreenhouseMenu = false;
+        private List<CropData> _crops = new List<CropData>();
         private bool _showSpaceshipMenu = false;
         private Structure _interactedStructure;
         
@@ -360,7 +385,7 @@ namespace AntigravityMoon
             {
                 if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
                 {
-                    bool isFood = _contextMenuItem == "Corn";
+                    bool isFood = _crops.Exists(c => c.Id == _contextMenuItem);
                     int menuHeight = isFood ? 50 : 25;
                     
                     Rectangle eatRect = isFood ? new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, 60, 25) : Rectangle.Empty;
@@ -373,8 +398,13 @@ namespace AntigravityMoon
                         // Eat
                         if (_contextMenuItem != null)
                         {
-                            _player.Inventory.RemoveItem((int)_contextMenuItemGridPos.X, (int)_contextMenuItemGridPos.Y);
-                            _player.Eat(100f);
+                            var cropData = _crops.Find(c => c.Id == _contextMenuItem);
+                            if (cropData != null)
+                            {
+                                _player.Inventory.RemoveItem((int)_contextMenuItemGridPos.X, (int)_contextMenuItemGridPos.Y);
+                                _player.Eat(100f);
+                                _player.AddBuff(cropData.HungerBuffReward, cropData.OxygenBuffReward, cropData.BuffDuration);
+                            }
                         }
                         _showInventoryContextMenu = false;
                     }
@@ -648,8 +678,12 @@ namespace AntigravityMoon
                     Vector2 mousePos = new Vector2(currentMouseState.X, currentMouseState.Y);
                     
                     // Menu Rect: Centered 600x400
-                    int menuWidth = 600;
-                    int menuHeight = 400;
+                    int menuWidth = Math.Min(GraphicsDevice.Viewport.Width - 40, 600);
+                    int menuHeight = 400; // Default for Workbench
+                    if (_showGreenhouseMenu)
+                    {
+                        menuHeight = Math.Min(GraphicsDevice.Viewport.Height - 40, 200 + (_crops.Count * 80) + 120); // 200 base + 80 per crop + 120 for harvest/timer
+                    }
                     Rectangle menuRect = new Rectangle((GraphicsDevice.Viewport.Width - menuWidth) / 2, (GraphicsDevice.Viewport.Height - menuHeight) / 2, menuWidth, menuHeight);
 
                     // Close Button (Right - 40, Top + 10) -> (660+600-40, 340+10) = (1220, 350, 30, 30)
@@ -682,27 +716,58 @@ namespace AntigravityMoon
                     }
                     else if (_showGreenhouseMenu)
                     {
-                        // Plant Corn Button (Rect: X+50, Y+100, 300, 60) -> (710, 440, 300, 60)
-                        if (new Rectangle(menuRect.X + 50, menuRect.Top + 100, 300, 60).Contains(mousePos))
+                        int cropIndex = 0;
+                        int startYOffset = 100;
+                        int buttonSpacing = 80;
+                        
+                        foreach (var crop in _crops)
                         {
-                            if (_interactedStructure != null)
+                            Rectangle plantBtnRect = new Rectangle(menuRect.X + 50, menuRect.Top + startYOffset + (cropIndex * buttonSpacing), 300, 60);
+                            
+                            if (plantBtnRect.Contains(mousePos))
                             {
-                                if (_player.Inventory.RemoveItems("Crystal", 1))
+                                if (_interactedStructure != null)
                                 {
-                                    _interactedStructure.StartGrowing("Corn");
+                                    bool canAfford = true;
+                                    foreach (var cost in crop.Costs)
+                                    {
+                                        if (_player.Inventory.CountItem(cost.Key) < cost.Value)
+                                        {
+                                            canAfford = false;
+                                            break;
+                                        }
+                                    }
+
+                                    if (canAfford)
+                                    {
+                                        foreach (var cost in crop.Costs)
+                                        {
+                                            _player.Inventory.RemoveItems(cost.Key, cost.Value);
+                                        }
+                                        _interactedStructure.StartGrowing(crop.Id, crop.GrowthTime);
+                                    }
                                 }
                             }
+                            cropIndex++;
                         }
-                        // Harvest Button (Rect: X+50, Y+200, 300, 60) -> (710, 540, 300, 60)
-                        if (new Rectangle(menuRect.X + 50, menuRect.Top + 200, 300, 60).Contains(mousePos))
+
+                        // Harvest Button is below the crop list
+                        int harvestYOffset = startYOffset + (_crops.Count * buttonSpacing) + 20;
+                        Rectangle harvestBtnRect = new Rectangle(menuRect.X + 50, menuRect.Top + harvestYOffset, 300, 60);
+                        
+                        if (harvestBtnRect.Contains(mousePos))
                         {
                              if (_interactedStructure != null && _interactedStructure.IsReadyToHarvest)
                              {
                                  bool harvestedAny = false;
                                  while (_interactedStructure.ReadyCount > 0)
                                  {
-                                     // Check if we can add Corn 
-                                     if (_player.Inventory.CanAddItem("Corn"))
+                                     // Peek at what crop is ready
+                                     string readyCrop = _interactedStructure.CropType;
+                                     if (string.IsNullOrEmpty(readyCrop)) readyCrop = "Corn"; // Fallback just in case
+                                     
+                                     // Check if we can add the specific Crop 
+                                     if (_player.Inventory.CanAddItem(readyCrop))
                                      {
                                          string crop = _interactedStructure.Harvest();
                                          if (crop != null)
@@ -739,7 +804,6 @@ namespace AntigravityMoon
                         if (refillBtn.Contains(mousePos))
                         {
                             // Cost: 2 Rocks
-                            if (_player.Inventory.RemoveItems("Rock", 2))
                             if (_player.Inventory.RemoveItems("Rock", 2))
                             {
                                 _player.RefillOxygen();
@@ -880,9 +944,14 @@ namespace AntigravityMoon
                 
                 if (currentKeyboardState.IsKeyDown(Keys.E) && !_prevKeyboardState.IsKeyDown(Keys.E))
                 {
-                    if (_player.Inventory.RemoveItems("Corn", 1))
+                    foreach (var crop in _crops)
                     {
-                        _player.Eat(100f);
+                        if (_player.Inventory.RemoveItems(crop.Id, 1))
+                        {
+                            _player.Eat(100f);
+                            _player.AddBuff(crop.HungerBuffReward, crop.OxygenBuffReward, crop.BuffDuration);
+                            break;
+                        }
                     }
                 }
 
@@ -1289,8 +1358,8 @@ namespace AntigravityMoon
                         if (s.PlantedCount > 0 && s.MaxPlantedCount > 0)
                         {
                             // Calculate total progress
-                            float totalDuration = s.MaxPlantedCount * 10f;
-                            float elapsedDuration = ((s.MaxPlantedCount - s.PlantedCount) * 10f) + s.GrowthTimer;
+                            float totalDuration = s.MaxPlantedCount * s.MaxGrowthTimer;
+                            float elapsedDuration = ((s.MaxPlantedCount - s.PlantedCount) * s.MaxGrowthTimer) + s.GrowthTimer;
                             float progress = elapsedDuration / totalDuration;
                             int fillWidth = (int)(barWidth * progress);
 
@@ -1376,7 +1445,10 @@ namespace AntigravityMoon
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 50, (int)(_player.Health * 4), 40), Color.Green);
 
             // Draw Hunger Bar
-            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "HUNGER", new Vector2(20, 100), Color.White, 2);
+            int hBuff = _player.GetTotalHungerBuff();
+            string hText = hBuff > 0 ? $"HUNGER (+{hBuff}% SLOWER)" : "HUNGER";
+            Color hColor = hBuff > 0 ? Color.LimeGreen : Color.White;
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, hText, new Vector2(20, 100), hColor, 2);
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 130, 400, 40), Color.Gray);
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 130, (int)(_player.Hunger * 4), 40), Color.Orange);
 
@@ -1397,7 +1469,10 @@ namespace AntigravityMoon
                     }
                 }
             // Draw Oxygen Bar
-            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "OXYJIN", new Vector2(20, 180), Color.White, 2);
+            int oBuff = _player.GetTotalOxygenBuff();
+            string oText = oBuff > 0 ? $"OXYJIN (+{oBuff}% SLOWER)" : "OXYJIN";
+            Color oColor = oBuff > 0 ? Color.LimeGreen : Color.White;
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, oText, new Vector2(20, 180), oColor, 2);
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 210, 400, 40), Color.Gray);
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 210, (int)(_player.Oxygen * 4), 40), Color.CornflowerBlue);
 
@@ -1455,8 +1530,8 @@ namespace AntigravityMoon
             else if (_showGreenhouseMenu)
             {
                 // Background
-                int menuWidth = 600;
-                int menuHeight = 400;
+                int menuWidth = Math.Min(GraphicsDevice.Viewport.Width - 40, 600);
+                int menuHeight = Math.Min(GraphicsDevice.Viewport.Height - 40, 200 + (_crops.Count * 80) + 120);
                 Rectangle menuRect = new Rectangle((GraphicsDevice.Viewport.Width - menuWidth) / 2, (GraphicsDevice.Viewport.Height - menuHeight) / 2, menuWidth, menuHeight);
                 _spriteBatch.Draw(_pixelTexture, menuRect, Color.DarkGreen);
                 
@@ -1467,39 +1542,72 @@ namespace AntigravityMoon
                 // Title
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "GREENHOUSE", new Vector2(menuRect.X + 20, menuRect.Top + 20), Color.White, 4);
 
-                // Plant Button
-                bool canAfford = _player.Inventory.CountItem("Crystal") >= 1;
-                Color plantColor = canAfford ? Color.Yellow : Color.Gray;
-                Rectangle plantBtnRect = new Rectangle(menuRect.X + 50, menuRect.Top + 100, 300, 60);
-                _spriteBatch.Draw(_pixelTexture, plantBtnRect, plantColor);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PLANT CORN", new Vector2(plantBtnRect.X + 10, plantBtnRect.Y + 20), Color.Black, 2);
-                
-                // Draw Cost (1 Crystal)
-                if (_textures.ContainsKey("crystal"))
+                // Dynamic Crop Buttons
+                int cropIndex = 0;
+                int startYOffset = 100;
+                int buttonSpacing = 80;
+
+                foreach (var crop in _crops)
                 {
-                    _spriteBatch.Draw(_textures["crystal"], new Rectangle(plantBtnRect.Right + 10, plantBtnRect.Y, 40, 40), Color.White);
-                    Color costColor = canAfford ? Color.White : Color.Red;
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "x1", new Vector2(plantBtnRect.Right + 60, plantBtnRect.Y + 10), costColor, 2);
+                    bool canAfford = true;
+                    foreach (var cost in crop.Costs)
+                    {
+                        if (_player.Inventory.CountItem(cost.Key) < cost.Value)
+                        {
+                            canAfford = false;
+                            break;
+                        }
+                    }
+
+                    Color plantColor = canAfford ? crop.GetFallbackColor() : Color.Gray;
+                    Rectangle plantBtnRect = new Rectangle(menuRect.X + 50, menuRect.Top + startYOffset + (cropIndex * buttonSpacing), 300, 60);
+                    
+                    _spriteBatch.Draw(_pixelTexture, plantBtnRect, plantColor);
+                    
+                    // Determine text color for contrast 
+                    Color textColor = Color.Black; 
+                    if (!canAfford) textColor = Color.DarkGray; // Dim if cannot afford
+                    
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"PLANT {crop.Name.ToUpper()}", new Vector2(plantBtnRect.X + 10, plantBtnRect.Y + 20), textColor, 2);
+                    
+                    // Draw Costs
+                    int offsetX = 0;
+                    foreach (var cost in crop.Costs)
+                    {
+                        string costTextureKey = cost.Key.ToLower();
+                        if (_textures.ContainsKey(costTextureKey))
+                        {
+                            _spriteBatch.Draw(_textures[costTextureKey], new Rectangle(plantBtnRect.Right + 10 + offsetX, plantBtnRect.Y, 40, 40), Color.White);
+                            Color costColor = _player.Inventory.CountItem(cost.Key) >= cost.Value ? Color.White : Color.Red;
+                            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"x{cost.Value}", new Vector2(plantBtnRect.Right + 60 + offsetX, plantBtnRect.Y + 10), costColor, 2);
+                            offsetX += 100; // Space for next item icon + text
+                        }
+                    }
+
+                    cropIndex++;
                 }
-                
+
                 // Harvest Button
+                int harvestYOffset = startYOffset + (_crops.Count * buttonSpacing) + 20;
                 Color harvestColor = (_interactedStructure != null && _interactedStructure.IsReadyToHarvest) ? Color.Green : Color.Gray;
-                Rectangle harvestBtnRect = new Rectangle(menuRect.X + 50, menuRect.Top + 200, 300, 60);
+                Rectangle harvestBtnRect = new Rectangle(menuRect.X + 50, menuRect.Top + harvestYOffset, 300, 60);
                 _spriteBatch.Draw(_pixelTexture, harvestBtnRect, harvestColor);
+                
                 string harvestText = _interactedStructure != null && _interactedStructure.ReadyCount > 0 ? $"HARVEST ({_interactedStructure.ReadyCount})" : "HARVEST";
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, harvestText, new Vector2(harvestBtnRect.X + 10, harvestBtnRect.Y + 20), Color.Black, 2);
 
                 // Growth Timer and Planted Count
                 if (_interactedStructure != null)
                 {
+                    int textYOffset = harvestYOffset + 80;
                     if (_interactedStructure.IsGrowing)
                     {
-                        string timerText = "GROWING: " + (10 - (int)_interactedStructure.GrowthTimer).ToString() + "S";
-                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, timerText, new Vector2(menuRect.X + 50, menuRect.Top + 300), Color.White, 2);
+                        string timerText = "GROWING: " + ((int)(_interactedStructure.MaxGrowthTimer - _interactedStructure.GrowthTimer)).ToString() + "S";
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, timerText, new Vector2(menuRect.X + 50, menuRect.Top + textYOffset), Color.White, 2);
                     }
                     if (_interactedStructure.PlantedCount > 0)
                     {
-                         PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"PLANTED: {_interactedStructure.PlantedCount}", new Vector2(menuRect.X + 50, menuRect.Top + 340), Color.Cyan, 2);
+                         PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"PLANTED: {_interactedStructure.PlantedCount}", new Vector2(menuRect.X + 50, menuRect.Top + textYOffset + 40), Color.Cyan, 2);
                     }
                 }
             }
@@ -1727,7 +1835,7 @@ namespace AntigravityMoon
             // Draw Inventory Context Menu
             if (_showInventoryContextMenu)
             {
-                bool isFood = _contextMenuItem == "Corn";
+                bool isFood = _crops.Exists(c => c.Id == _contextMenuItem);
                 int menuHeight = isFood ? 50 : 25;
                 
                 _spriteBatch.Draw(_pixelTexture, new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, 60, menuHeight), Color.White);
@@ -1940,6 +2048,7 @@ namespace AntigravityMoon
             data.Oxygen = _player.Oxygen;
             data.Hunger = _player.Hunger;
             data.BackpackLevel = _player.Inventory.UpgradeLevel;
+            data.SuitLevel = _player.SuitLevel;
             
             // Inventory
             for (int y = 0; y < _player.Inventory.Rows; y++)
@@ -2014,6 +2123,7 @@ namespace AntigravityMoon
                 
                 _player.Oxygen = data.Oxygen;
                 _player.Hunger = data.Hunger;
+                _player.SuitLevel = data.SuitLevel > 0 ? data.SuitLevel : 1;
                 _player.Inventory.Clear();
                 
                 // Snap Camera

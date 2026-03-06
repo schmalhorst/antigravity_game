@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AntigravityMoon")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+08dff837e9eceaef1ad783b0b891677830ec80d0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0fdec39756a273df184855350be3c29fcb3412cc")]
 [assembly: System.Reflection.AssemblyProductAttribute("AntigravityMoon")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AntigravityMoon")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
