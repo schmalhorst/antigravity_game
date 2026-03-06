@@ -372,8 +372,8 @@ namespace AntigravityMoon
                             int bgWidth = (countText.Length * 6) + 2;
                             spriteBatch.Draw(pixelTexture, new Rectangle((int)countPos.X - 1, (int)countPos.Y - 1, bgWidth, 10), Color.Black * 0.9f);
                             
-                            // Draw count text (larger font size 2)
-                            PixelTextRenderer.DrawText(spriteBatch, pixelTexture, countText, countPos, Color.White, 2);
+                            // Draw count text (font size 1)
+                            PixelTextRenderer.DrawText(spriteBatch, pixelTexture, countText, countPos, Color.White, 1);
                         }
                     }
                 }

@@ -140,3 +140,4 @@
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/spaceship_broken3.xnb
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/crops.json
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/potato.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/DefaultFont.xnb

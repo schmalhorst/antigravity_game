@@ -136,6 +136,9 @@ namespace AntigravityMoon
             LoadTexture("vignette");
             if (_textures.ContainsKey("vignette")) _vignetteTexture = _textures["vignette"];
             if (_textures.ContainsKey("floppy")) _floppyIcon = _textures["floppy"];
+
+            // Load Global Font
+            PixelTextRenderer.Font = Content.Load<SpriteFont>("DefaultFont");
         }
 
         private void LoadTexture(string name)
@@ -1151,9 +1154,7 @@ namespace AntigravityMoon
                         {
                             if (entity is Structure s && s.Type != "Rock" && s.Type != "Crystal" && s.Type != "Spaceship")
                             {
-                                int w = s.Width > 0 ? s.Width : 32;
-                                int h = s.Height > 0 ? s.Height : 32;
-                                Rectangle bounds = new Rectangle((int)s.Position.X, (int)s.Position.Y, w, h);
+                                Rectangle bounds = s.GetBounds();
                                 
                                 if (bounds.Contains(mouseWorldPos))
                                 {
@@ -1277,7 +1278,7 @@ namespace AntigravityMoon
 
             if (_currentGameState == GameState.StartMenu)
             {
-                _spriteBatch.Begin();
+                _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "ANTIGRAVITY MOON", new Vector2(400, 400), Color.White, 8);
                 
                 // New Colony Button
@@ -1424,7 +1425,7 @@ namespace AntigravityMoon
             if (_currentGameState == GameState.Playing)
             {
                 // Draw UI (Inventory) separately without camera transform (Screen Space)
-                _spriteBatch.Begin();
+                _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             
             if (_showInventory)
             {
@@ -1698,14 +1699,14 @@ namespace AntigravityMoon
                     {
                         _spriteBatch.Draw(_pixelTexture, slotRect, _buildModeState == BuildModeState.Editing ? Color.Green : Color.Blue);
                         string btnText = _buildModeState == BuildModeState.Editing ? "OK" : "EDIT"; // Short text for vertical
-                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, btnText, new Vector2(slotRect.X + 5, slotRect.Y + 20), Color.White, 1);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, btnText, new Vector2(slotRect.X + 5, slotRect.Y + 20), Color.White, 1.5f);
                         continue; // Skip cost logic for button
                     }
 
                     // Draw Cost Text (Hover or Always? Let's do always for now to be clear)
                     // Draw to the right of the slot
                     Color textColor = canBuild ? Color.White : Color.Red;
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, costText, new Vector2(slotRect.Right + 10, slotRect.Y + 15), textColor, 1);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, costText, new Vector2(slotRect.Right + 10, slotRect.Y + 15), textColor, 1.5f);
                 }
             }
 
@@ -1901,7 +1902,7 @@ namespace AntigravityMoon
             }
 
             // Draw Minimap (UI Layer)
-            _spriteBatch.Begin();
+            _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             if (_showMinimap)
             {
                 int scale = _minimapSize == 1 ? MinimapScaleSmall : MinimapScaleLarge;
