@@ -1,5 +1,7 @@
 # AntigravityMoon 🌙
 
+![Antigravity Moon Banner](AntigravityMoon/Content/Images/World/antigravity_moon_banner.png)
+
 A survival and exploration game set on a mysterious alien moon. Battle hostile creatures, build structures, manage resources, and explore an infinite procedurally-generated world.
 
 ## About This Project
