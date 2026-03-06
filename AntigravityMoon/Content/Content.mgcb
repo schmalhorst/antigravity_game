@@ -13,7 +13,7 @@
 
 #---------------------------------- Content ---------------------------------#
 
-#begin astronaut.png
+#begin Images/World/astronaut.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -23,9 +23,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:astronaut.png
+/build:Images/World/astronaut.png
 
-#begin rock.png
+#begin Images/World/rock.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -35,9 +35,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:rock.png
+/build:Images/World/rock.png
 
-#begin moon_ground.png
+#begin Images/World/moon_ground.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -47,9 +47,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:moon_ground.png
+/build:Images/World/moon_ground.png
 
-#begin greenhouse.png
+#begin Images/Structures/greenhouse.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -59,9 +59,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:greenhouse.png
+/build:Images/Structures/greenhouse.png
 
-#begin workbench.png
+#begin Images/Structures/workbench.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -71,9 +71,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:workbench.png
+/build:Images/Structures/workbench.png
 
-#begin corn.png
+#begin Images/Items/corn.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -83,9 +83,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:corn.png
+/build:Images/Items/corn.png
 
-#begin crystal.png
+#begin Images/World/crystal.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -95,9 +95,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:crystal.png
+/build:Images/World/crystal.png
 
-#begin spaceship.png
+#begin Images/Structures/spaceship.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -107,9 +107,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:spaceship.png
+/build:Images/Structures/spaceship.png
 
-#begin metro_alien.png
+#begin Images/World/metro_alien.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -119,9 +119,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:metro_alien.png
+/build:Images/World/metro_alien.png
 
-#begin backpack.png
+#begin Images/World/backpack.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -131,9 +131,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:backpack.png
+/build:Images/World/backpack.png
 
-#begin skull_crossbones.png
+#begin Images/World/skull_crossbones.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -143,9 +143,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:skull_crossbones.png
+/build:Images/World/skull_crossbones.png
 
-#begin reactor.png
+#begin Images/Structures/reactor.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -155,9 +155,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:reactor.png
+/build:Images/Structures/reactor.png
 
-#begin reactor_empty.png
+#begin Images/Structures/reactor_empty.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -167,9 +167,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:reactor_empty.png
+/build:Images/Structures/reactor_empty.png
 
-#begin spaceship_broken1.png
+#begin Images/Structures/spaceship_broken1.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -179,9 +179,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:spaceship_broken1.png
+/build:Images/Structures/spaceship_broken1.png
 
-#begin spaceship_broken2.png
+#begin Images/Structures/spaceship_broken2.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -191,9 +191,9 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:spaceship_broken2.png
+/build:Images/Structures/spaceship_broken2.png
 
-#begin spaceship_broken3.png
+#begin Images/Structures/spaceship_broken3.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -203,11 +203,11 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:spaceship_broken3.png
+/build:Images/Structures/spaceship_broken3.png
 #begin crops.json
 /copy:crops.json
 
-#begin potato.png
+#begin Images/Items/potato.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -217,7 +217,7 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:potato.png
+/build:Images/Items/potato.png
 
 #begin DefaultFont.spritefont
 /importer:FontDescriptionImporter
@@ -225,3 +225,15 @@
 /processorParam:PremultiplyAlpha=True
 /processorParam:TextureFormat=Compressed
 /build:DefaultFont.spritefont
+
+#begin Sounds/eerie_piano_loop.wav
+/importer:WavImporter
+/processor:SongProcessor
+/processorParam:Quality=Best
+/build:Sounds/eerie_piano_loop.wav
+
+#begin Sounds/pew.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Sounds/pew.wav

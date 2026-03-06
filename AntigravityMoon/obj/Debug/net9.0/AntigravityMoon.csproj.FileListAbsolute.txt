@@ -88,17 +88,6 @@
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/Other computers/My Computer/Documents/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.pdb
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/Other computers/My Computer/Documents/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.genruntimeconfig.cache
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/Other computers/My Computer/Documents/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/ref/AntigravityMoon.dll
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/astronaut.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/backpack.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/corn.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/crystal.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/greenhouse.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/metro_alien.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/moon_ground.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/rock.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/skull_crossbones.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/spaceship.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/workbench.xnb
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/AntigravityMoon
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/AntigravityMoon.deps.json
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/AntigravityMoon.runtimeconfig.json
@@ -133,11 +122,25 @@
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.pdb
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.genruntimeconfig.cache
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/ref/AntigravityMoon.dll
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/reactor.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/reactor_empty.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/spaceship_broken1.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/spaceship_broken2.xnb
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/spaceship_broken3.xnb
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/crops.json
-/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/potato.xnb
 /Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/DefaultFont.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Sounds/eerie_piano_loop.ogg
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Sounds/eerie_piano_loop.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Sounds/pew.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/Structures/greenhouse.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/Structures/reactor.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/Structures/reactor_empty.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/Structures/spaceship.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/Structures/spaceship_broken1.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/Structures/spaceship_broken2.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/Structures/spaceship_broken3.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/Structures/workbench.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/World/astronaut.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/World/backpack.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/World/crystal.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/World/metro_alien.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/World/moon_ground.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/World/rock.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/World/skull_crossbones.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/Items/corn.xnb
+/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/Content/Images/Items/potato.xnb

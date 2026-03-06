@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PipelineBuildEvent xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <SourceFile>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Sounds/pew.wav</SourceFile>
+  <SourceTime>2026-03-06T10:44:01.2305008-06:00</SourceTime>
+  <DestFile>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/bin/DesktopGL/Content/Sounds/pew.xnb</DestFile>
+  <DestTime>2026-03-06T10:44:27.6910786-06:00</DestTime>
+  <Importer>WavImporter</Importer>
+  <ImporterTime>2025-10-20T09:25:32-05:00</ImporterTime>
+  <Processor>SoundEffectProcessor</Processor>
+  <ProcessorTime>2025-10-20T09:25:32-05:00</ProcessorTime>
+  <Parameters>
+    <Key>Quality</Key>
+    <Value>Best</Value>
+  </Parameters>
+  <Dependencies />
+  <BuildAsset />
+  <BuildOutput />
+</PipelineBuildEvent>

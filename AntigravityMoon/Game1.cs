@@ -6,6 +6,8 @@ using System.IO;
 using System.Text.Json;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
+using Microsoft.Xna.Framework.Audio;
 using System;
 
 namespace AntigravityMoon
@@ -30,6 +32,8 @@ namespace AntigravityMoon
         private float _inventoryFullTimer = 0f;
 
         private Texture2D _vignetteTexture;
+        private Song _backgroundMusic;
+        private SoundEffect _laserSound;
 
         public Game1()
         {
@@ -79,32 +83,33 @@ namespace AntigravityMoon
             // Load Textures
             _textures = new Dictionary<string, Texture2D>();
             _textures["Pixel"] = _pixelTexture; // Add Pixel texture for fallback
-            LoadTexture("astronaut");
-            LoadTexture("moon_ground");
-            LoadTexture("rock");
-            LoadTexture("crystal");
-            LoadTexture("greenhouse");
-            LoadTexture("workbench");
-            LoadTexture("corn");
-            LoadTexture("astronaut");
-            LoadTexture("metro_alien");
+            LoadTexture("World", "astronaut");
+            LoadTexture("World", "moon_ground");
+            LoadTexture("World", "rock");
+            LoadTexture("World", "crystal");
+            LoadTexture("Structures", "greenhouse");
+            LoadTexture("Structures", "workbench");
+            LoadTexture("Items", "corn");
+            LoadTexture("Items", "potato");
+            LoadTexture("World", "metro_alien");
             
             // Structures
-            LoadTexture("greenhouse");
-            LoadTexture("spaceship");
-            LoadTexture("spaceship_broken1");
-            LoadTexture("spaceship_broken2");
-            LoadTexture("spaceship_broken3");
-            LoadTexture("mineral");
-            LoadTexture("bionic_tech");
-            LoadTexture("reactor");
-            LoadTexture("reactor_empty");
-            LoadTexture("radar");
-            LoadTexture("wormhole");
-            LoadTexture("floppy");
+            LoadTexture("Structures", "spaceship");
+            LoadTexture("Structures", "spaceship_broken1");
+            LoadTexture("Structures", "spaceship_broken2");
+            LoadTexture("Structures", "spaceship_broken3");
+            LoadTexture("Structures", "mineral");
+            LoadTexture("World", "bionic_tech");
+            LoadTexture("Structures", "reactor");
+            LoadTexture("Structures", "reactor_empty");
+            LoadTexture("Structures", "radar");
+            LoadTexture("Structures", "wormhole");
+            LoadTexture("World", "floppy");
+            LoadTexture("Structures", "hab");
+            LoadTexture("Structures", "machinery");
 
-            _textures["backpack"] = Content.Load<Texture2D>("backpack");
-            _textures["skull_crossbones"] = Content.Load<Texture2D>("skull_crossbones");
+            _textures["backpack"] = Content.Load<Texture2D>("Images/World/backpack");
+            _textures["skull_crossbones"] = Content.Load<Texture2D>("Images/World/skull_crossbones");
             
             // Try loading crops.json
             string cropsPath = Path.Combine(Content.RootDirectory, "crops.json");
@@ -124,7 +129,7 @@ namespace AntigravityMoon
             // Generate Textures for Crops if they don't exist
             foreach (var crop in _crops)
             {
-               try { _textures[crop.Id.ToLower()] = Content.Load<Texture2D>(crop.Id.ToLower()); }
+               try { _textures[crop.Id.ToLower()] = Content.Load<Texture2D>($"Images/Items/{crop.Id.ToLower()}"); }
                catch { /* Missing texture, fallback logic in drawing */ }
             }
             
@@ -133,17 +138,30 @@ namespace AntigravityMoon
             _spaceshipTexture = _textures["spaceship"];
             _spaceshipPosition = new Vector2(400, -100); // Start off screen
             
-            LoadTexture("vignette");
+            LoadTexture("World", "vignette");
             if (_textures.ContainsKey("vignette")) _vignetteTexture = _textures["vignette"];
             if (_textures.ContainsKey("floppy")) _floppyIcon = _textures["floppy"];
 
             // Load Global Font
             PixelTextRenderer.Font = Content.Load<SpriteFont>("DefaultFont");
+
+            try 
+            {
+                _backgroundMusic = Content.Load<Song>("Sounds/eerie_piano_loop");
+                _laserSound = Content.Load<SoundEffect>("Sounds/pew");
+                MediaPlayer.IsRepeating = true;
+                MediaPlayer.Volume = 0.5f;
+                MediaPlayer.Play(_backgroundMusic);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading background music: {ex.Message}");
+            }
         }
 
-        private void LoadTexture(string name)
+        private void LoadTexture(string folder, string name)
         {
-            string path = Path.Combine("Content", name + ".png");
+            string path = Path.Combine("Content", "Images", folder, name + ".png");
             if (File.Exists(path))
             {
                 using (var stream = File.OpenRead(path))
@@ -867,6 +885,7 @@ namespace AntigravityMoon
                             alien.TakeDamage(10f); // 10% damage per click
                             // Add Laser
                             _lasers.Add(new Laser { Start = _player.Position + new Vector2(16, 16), End = mouseWorldPos, Duration = 0.2f, MaxDuration = 0.2f });
+                            _laserSound?.Play(0.2f, 0f, 0f);
                             hitAlien = true;
                             break;
                         }
@@ -881,6 +900,7 @@ namespace AntigravityMoon
                         {
                             // Add Laser for object interaction too
                             _lasers.Add(new Laser { Start = _player.Position + new Vector2(16, 16), End = mouseWorldPos, Duration = 0.2f, MaxDuration = 0.2f });
+                            _laserSound?.Play(0.2f, 0f, 0f);
 
                             if (s.GetBounds().Intersects(new Rectangle((int)_player.Position.X - 60, (int)_player.Position.Y - 60, 160, 160))) // Must be close
                             {
