@@ -104,6 +104,7 @@ namespace AntigravityMoon
             LoadTexture("Items", "potato");
             LoadTexture("World", "metro_alien");
             LoadTexture("World", "the_destroyer");
+            LoadTexture("World", "cave_entrance");
             
             // Structures
             LoadTexture("Structures", "spaceship");
@@ -460,12 +461,25 @@ namespace AntigravityMoon
             int currentTileY = (int)Math.Floor(_player.Position.Y / TileMap.TileSize);
             int currentTile = _tileMap.GetTile(currentTileX, currentTileY);
 
-            if (currentTile == 3 && currentKeyboardState.IsKeyDown(Keys.E) && !_prevKeyboardState.IsKeyDown(Keys.E))
+            bool nearEntrance = false;
+            bool nearExit = false;
+
+            for (int dx = -2; dx <= 2; dx++)
+            {
+                for (int dy = -2; dy <= 2; dy++)
+                {
+                    int tile = _tileMap.GetTile(currentTileX + dx, currentTileY + dy);
+                    if (tile == 3) nearEntrance = true;
+                    if (tile == 6) nearExit = true;
+                }
+            }
+
+            if (nearEntrance && currentKeyboardState.IsKeyDown(Keys.E) && !_prevKeyboardState.IsKeyDown(Keys.E))
             {
                 // Warp Underground (minus exactly 1000 chunks)
                 _player.Position = new Vector2(_player.Position.X, _player.Position.Y - 1_024_000);
             }
-            else if (currentTile == 6 && currentKeyboardState.IsKeyDown(Keys.E) && !_prevKeyboardState.IsKeyDown(Keys.E))
+            else if (nearExit && currentKeyboardState.IsKeyDown(Keys.E) && !_prevKeyboardState.IsKeyDown(Keys.E))
             {
                 // Warp Surface
                 _player.Position = new Vector2(_player.Position.X, _player.Position.Y + 1_024_000);
@@ -1440,7 +1454,7 @@ namespace AntigravityMoon
         viewHalfW * 2,
         viewHalfH * 2
     );
-    _tileMap.Draw(_spriteBatch, _textures.ContainsKey("moon_ground") ? _textures["moon_ground"] : _pixelTexture, cameraRect, gameTime.TotalGameTime.TotalSeconds);
+    _tileMap.Draw(_spriteBatch, _textures, _pixelTexture, cameraRect, gameTime.TotalGameTime.TotalSeconds);
             
             if (_currentGameState == GameState.Intro)
             {
@@ -1629,15 +1643,28 @@ namespace AntigravityMoon
             // Transition Prompts (Screen Space Center)
             int drawTileX = (int)Math.Floor(_player.Position.X / TileMap.TileSize);
             int drawTileY = (int)Math.Floor(_player.Position.Y / TileMap.TileSize);
-            int drawTile = _tileMap.GetTile(drawTileX, drawTileY);
-            if (drawTile == 3)
+            
+            bool nearPromptEntrance = false;
+            bool nearPromptExit = false;
+            
+            for (int dx = -2; dx <= 2; dx++)
+            {
+                for (int dy = -2; dy <= 2; dy++)
+                {
+                    int tile = _tileMap.GetTile(drawTileX + dx, drawTileY + dy);
+                    if (tile == 3) nearPromptEntrance = true;
+                    if (tile == 6) nearPromptExit = true;
+                }
+            }
+
+            if (nearPromptEntrance)
             {
                 float promptPulse = 0.8f + (float)Math.Sin(gameTime.TotalGameTime.TotalSeconds * 5) * 0.2f;
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS E TO ENTER CAVE", 
                     new Vector2(GraphicsDevice.Viewport.Width / 2 - 150, GraphicsDevice.Viewport.Height / 2 - 80), 
                     Color.Yellow * promptPulse, 2);
             }
-            else if (drawTile == 6)
+            else if (nearPromptExit)
             {
                 float promptPulse = 0.8f + (float)Math.Sin(gameTime.TotalGameTime.TotalSeconds * 5) * 0.2f;
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS E TO CLIMB TO SURFACE", 

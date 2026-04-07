@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/AntigravityMoon.csproj": {}
+    "/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/AntigravityMoon.csproj": {}
   },
   "projects": {
-    "/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/AntigravityMoon.csproj": {
+    "/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/AntigravityMoon.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
+        "projectUniqueName": "/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
         "projectName": "AntigravityMoon",
-        "projectPath": "/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
+        "projectPath": "/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
         "packagesPath": "/Users/johnschmalhorst/.nuget/packages/",
-        "outputPath": "/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/obj/",
+        "outputPath": "/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/johnschmalhorst/.nuget/NuGet/NuGet.Config"

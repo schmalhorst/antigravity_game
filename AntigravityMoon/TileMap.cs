@@ -266,7 +266,7 @@ namespace AntigravityMoon
             return chunk.Explored[localX, localY];
         }
 
-        public void Draw(SpriteBatch spriteBatch, Texture2D texture, Rectangle cameraViewRect, double totalSeconds = 0)
+        public void Draw(SpriteBatch spriteBatch, Dictionary<string, Texture2D> textures, Texture2D pixelTexture, Rectangle cameraViewRect, double totalSeconds = 0)
         {
             int startTileX = (int)Math.Floor((float)cameraViewRect.Left / TileSize) - 1;
             int endTileX   = (int)Math.Floor((float)cameraViewRect.Right / TileSize) + 1;
@@ -283,33 +283,41 @@ namespace AntigravityMoon
                     Color color;
                     bool isDarkSide = x > 32000;
 
+                    Texture2D tileTex = textures.ContainsKey("moon_ground") ? textures["moon_ground"] : pixelTexture;
+
                     if (tileType == 3) // Tunnel Entrance
                     {
-                        color = new Color(80, 70, 70); 
+                        color = Color.White; // Draw without tint
+                        if (textures.ContainsKey("cave_entrance"))
+                            tileTex = textures["cave_entrance"];
                     }
                     else if (tileType == 4) // Cave Floor
                     {
                         color = new Color(50, 40, 40); // Darker floor
+                        tileTex = pixelTexture;
                     }
                     else if (tileType == 5) // Cave Wall (solid)
                     {
                         color = new Color(20, 15, 15); // Almost black walls
+                        tileTex = pixelTexture;
                     }
                     else if (tileType == 6) // Cave Exit (Rope / Hole)
                     {
                         color = new Color(130, 100, 70); // Brownish rope look
+                        tileTex = pixelTexture;
                     }
                     else if (isDarkSide)
                     {
                         if (tileType == 0) color = new Color(20, 0, 40);
                         else if (tileType == 1) color = new Color(60, 20, 80);
                         else color = Color.Black;
+                        tileTex = pixelTexture;
                     }
                     else
                     {
-                        if (tileType == 0) color = Color.Gray;
-                        else if (tileType == 1) color = Color.DarkGray;
-                        else color = Color.Black; // Crater
+                        if (tileType == 0) { color = Color.Gray; }
+                        else if (tileType == 1) { color = Color.DarkGray * 0.25f; tileTex = pixelTexture; }
+                        else { color = Color.Black; tileTex = pixelTexture; } // Crater
                     }
 
                     if (!explored)
@@ -317,7 +325,15 @@ namespace AntigravityMoon
                         color = Color.Multiply(color, 0.3f);
                     }
 
-                    spriteBatch.Draw(texture, new Rectangle(x * TileSize, y * TileSize, TileSize, TileSize), color);
+                    if (tileType == 3)
+                    {
+                        // Draw cave entrance 2x larger, centered over the tile
+                        spriteBatch.Draw(tileTex, new Rectangle(x * TileSize - TileSize / 1, y * TileSize - TileSize / 1, TileSize * 1, TileSize * 1), color);
+                    }
+                    else
+                    {
+                        spriteBatch.Draw(tileTex, new Rectangle(x * TileSize, y * TileSize, TileSize, TileSize), color);
+                    }
                 }
             }
         }
