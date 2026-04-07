@@ -4,26 +4,26 @@
   <Platform>DesktopGL</Platform>
   <Config />
   <SourceFiles>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/World/astronaut.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/World/rock.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/World/moon_ground.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/Structures/greenhouse.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/Structures/workbench.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/Items/corn.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/World/crystal.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/Structures/spaceship.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/World/metro_alien.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/World/backpack.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/World/skull_crossbones.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/Structures/reactor.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/Structures/reactor_empty.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/Structures/spaceship_broken1.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/Structures/spaceship_broken2.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/Structures/spaceship_broken3.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Images/Items/potato.png</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/DefaultFont.spritefont</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Sounds/eerie_piano_loop.wav</File>
-    <File>/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/Content/Sounds/pew.wav</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/World/astronaut.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/World/rock.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/World/moon_ground.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/Structures/greenhouse.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/Structures/workbench.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/Items/corn.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/World/crystal.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/Structures/spaceship.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/World/metro_alien.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/World/backpack.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/World/skull_crossbones.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/Structures/reactor.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/Structures/reactor_empty.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/Structures/spaceship_broken1.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/Structures/spaceship_broken2.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/Structures/spaceship_broken3.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Images/Items/potato.png</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/DefaultFont.spritefont</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Sounds/eerie_piano_loop.wav</File>
+    <File>/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/Content/Sounds/pew.wav</File>
   </SourceFiles>
   <DestFiles>
     <File xsi:nil="true" />

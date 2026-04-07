@@ -168,11 +168,11 @@ namespace AntigravityMoon
                     for (int ty = minTileY; ty <= maxTileY && !collision; ty++)
                     {
                         int tileType = tileMap.GetTile(tx, ty);
-                        if (tileType == 2) // Crater
+                        if (tileType == 2 || tileType == 5) // Crater or Cave Wall
                         {
                             // Check actual rectangle intersection
-                            Rectangle craterRect = new Rectangle(tx * TileMap.TileSize, ty * TileMap.TileSize, TileMap.TileSize, TileMap.TileSize);
-                            if (playerRect.Intersects(craterRect))
+                            Rectangle obstacleRect = new Rectangle(tx * TileMap.TileSize, ty * TileMap.TileSize, TileMap.TileSize, TileMap.TileSize);
+                            if (playerRect.Intersects(obstacleRect))
                             {
                                 collision = true;
                             }

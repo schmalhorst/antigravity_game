@@ -300,11 +300,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
+      "projectUniqueName": "/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
       "projectName": "AntigravityMoon",
-      "projectPath": "/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
+      "projectPath": "/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/AntigravityMoon.csproj",
       "packagesPath": "/Users/johnschmalhorst/.nuget/packages/",
-      "outputPath": "/Users/johnschmalhorst/Library/CloudStorage/GoogleDrive-jonathan.schmalhorst@gmail.com/My Drive/Projects/antigravity_game/AntigravityMoon/obj/",
+      "outputPath": "/Volumes/WALRUS_PROJECT/antigravity/antigravity_game/AntigravityMoon/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/Users/johnschmalhorst/.nuget/NuGet/NuGet.Config"
@@ -331,7 +331,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "10.0.100"
+      "SdkAnalysisLevel": "9.0.300"
     },
     "frameworks": {
       "net9.0": {
@@ -357,26 +357,12 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
-        "downloadDependencies": [
-          {
-            "name": "Microsoft.AspNetCore.App.Ref",
-            "version": "[9.0.11, 9.0.11]"
-          },
-          {
-            "name": "Microsoft.NETCore.App.Host.osx-arm64",
-            "version": "[9.0.11, 9.0.11]"
-          },
-          {
-            "name": "Microsoft.NETCore.App.Ref",
-            "version": "[9.0.11, 9.0.11]"
-          }
-        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.100/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/Users/johnschmalhorst/.dotnet/sdk/9.0.312/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

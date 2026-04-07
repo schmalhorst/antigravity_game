@@ -12,9 +12,22 @@ namespace AntigravityMoon
         public bool IsDead { get; private set; } = false;
         public float Health { get; private set; } = 100f;
 
-        public Alien(Vector2 position) 
-            : base(position, "Alien", true, false, false) // Movable, Not Harvestable, Not Solid (so it can overlap/hit)
+        public int Width { get; private set; }
+        public int Height { get; private set; }
+
+        public Alien(Vector2 position, string alienType = "metro_alien") 
+            : base(position, alienType, true, false, false) // Movable, Not Harvestable, Not Solid (so it can overlap/hit)
         {
+            if (alienType == "the_destroyer")
+            {
+                Width = 64;
+                Height = 64;
+            }
+            else
+            {
+                Width = 128;
+                Height = 64;
+            }
         }
 
         public void Update(float dt, Player player)
@@ -77,14 +90,14 @@ namespace AntigravityMoon
 
         public override void Draw(SpriteBatch spriteBatch, Texture2D texture, Vector2 mouseWorldPos)
         {
-            // Draw alien wider - 128x64
-            Rectangle bounds = new Rectangle((int)Position.X, (int)Position.Y, 128, 64);
+            // Draw alien using assigned dimensions
+            Rectangle bounds = new Rectangle((int)Position.X, (int)Position.Y, Width, Height);
             spriteBatch.Draw(texture, bounds, Color.White);
             
             // Draw HP Bar
-            int barWidth = 100;
+            int barWidth = Math.Min(100, Width);
             int barHeight = 10;
-            int barX = (int)Position.X + (128 - barWidth) / 2;
+            int barX = (int)Position.X + (Width - barWidth) / 2;
             int barY = (int)Position.Y - 20;
             
             // Background (Red)

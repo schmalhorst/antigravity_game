@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using Microsoft.Xna.Framework;
@@ -33,7 +33,17 @@ namespace AntigravityMoon
 
         private Texture2D _vignetteTexture;
         private Song _backgroundMusic;
+        private Song _tunnelMusic;   // Cinematic plucky strings — loaded from Sounds/tunnel_ambience
         private SoundEffect _laserSound;
+
+        // Lava Tunnel state
+        private bool _inTunnel = false;
+
+        // Camera Zoom
+        private float _targetZoom = 2.0f;
+        private const float MinZoom = 1.0f;
+        private const float MaxZoom = 4.0f;
+        private int _prevScrollValue = 0;
 
         public Game1()
         {
@@ -49,6 +59,7 @@ namespace AntigravityMoon
         protected override void Initialize()
         {
             _camera = new Camera(GraphicsDevice.Viewport);
+            _camera.Zoom = 2.0f; // Default closer zoom
             _tileMap = new TileMap(); // Infinite map
             _entityManager = new EntityManager();
             _player = new Player(Vector2.Zero); // Start at world origin
@@ -92,6 +103,7 @@ namespace AntigravityMoon
             LoadTexture("Items", "corn");
             LoadTexture("Items", "potato");
             LoadTexture("World", "metro_alien");
+            LoadTexture("World", "the_destroyer");
             
             // Structures
             LoadTexture("Structures", "spaceship");
@@ -145,7 +157,7 @@ namespace AntigravityMoon
             // Load Global Font
             PixelTextRenderer.Font = Content.Load<SpriteFont>("DefaultFont");
 
-            try 
+            try
             {
                 _backgroundMusic = Content.Load<Song>("Sounds/eerie_piano_loop");
                 _laserSound = Content.Load<SoundEffect>("Sounds/pew");
@@ -156,6 +168,26 @@ namespace AntigravityMoon
             catch (Exception ex)
             {
                 Console.WriteLine($"Error loading background music: {ex.Message}");
+            }
+
+            // Load tunnel ambience music (cinematic plucky strings).
+            // TODO: Replace tunnel_ambience.wav with proper cinematic plucky strings track.
+            try
+            {
+                _tunnelMusic = Content.Load<Song>("Sounds/tunnel_ambience");
+            }
+            catch
+            {
+                // Fallback: reuse background music if tunnel_ambience.wav is not yet added.
+                _tunnelMusic = _backgroundMusic;
+            }
+
+            // Register Metal as a spawnable entity texture (placeholder orange color via pixel)
+            if (!_textures.ContainsKey("metal"))
+            {
+                var metalTex = new Texture2D(GraphicsDevice, 1, 1);
+                metalTex.SetData(new[] { new Color(180, 120, 40) }); // Warm metallic orange
+                _textures["metal"] = metalTex;
             }
         }
 
@@ -215,8 +247,10 @@ namespace AntigravityMoon
         
         // Alien Logic
         private List<Alien> _aliens = new List<Alien>();
-        private float _alienSpawnTimer = 0f;
-        private bool _alienSpawned = false;
+        private float _surfaceAlienTimer = 0f;
+        private bool _surfaceAlienSpawned = false;
+        private float _caveAlienTimer = 0f;
+        private bool _caveAlienSpawned = false;
         
         // Death Screen
         private bool _showDeathScreen = false;
@@ -279,6 +313,24 @@ namespace AntigravityMoon
             KeyboardState currentKeyboardState = Keyboard.GetState();
             MouseState currentMouseState = Mouse.GetState();
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            // --- Camera Zoom (scroll wheel + Z/X keys) ---
+            int currentScrollValue = currentMouseState.ScrollWheelValue;
+            int scrollDelta = currentScrollValue - _prevScrollValue;
+            _prevScrollValue = currentScrollValue;
+
+            if (scrollDelta > 0)
+                _targetZoom = Math.Clamp(_targetZoom + 0.25f, MinZoom, MaxZoom);
+            else if (scrollDelta < 0)
+                _targetZoom = Math.Clamp(_targetZoom - 0.25f, MinZoom, MaxZoom);
+
+            if (currentKeyboardState.IsKeyDown(Keys.Z) && !_prevKeyboardState.IsKeyDown(Keys.Z))
+                _targetZoom = Math.Clamp(_targetZoom + 0.25f, MinZoom, MaxZoom);
+            if (currentKeyboardState.IsKeyDown(Keys.X) && !_prevKeyboardState.IsKeyDown(Keys.X))
+                _targetZoom = Math.Clamp(_targetZoom - 0.25f, MinZoom, MaxZoom);
+
+            // Smooth lerp towards target zoom
+            _camera.Zoom += (_targetZoom - _camera.Zoom) * Math.Min(dt * 12f, 1f);
 
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || currentKeyboardState.IsKeyDown(Keys.Escape))
                 Exit();
@@ -366,8 +418,10 @@ namespace AntigravityMoon
                         _showDeathScreen = false;
                         _player.DoRespawn();
                         // Reset game state for respawn
-                        _alienSpawned = false;
-                        _alienSpawnTimer = 0f;
+                        _surfaceAlienSpawned = false;
+                        _surfaceAlienTimer = 0f;
+                        _caveAlienSpawned = false;
+                        _caveAlienTimer = 0f;
                         _aliens.Clear();
                   }
                 }
@@ -400,6 +454,49 @@ namespace AntigravityMoon
 
             // Update Exploration
             _tileMap.Explore(_player.Position, 300f); // 300px radius
+
+            // --- Stardew Valley Tunnel Teleportation ---
+            int currentTileX = (int)Math.Floor(_player.Position.X / TileMap.TileSize);
+            int currentTileY = (int)Math.Floor(_player.Position.Y / TileMap.TileSize);
+            int currentTile = _tileMap.GetTile(currentTileX, currentTileY);
+
+            if (currentTile == 3 && currentKeyboardState.IsKeyDown(Keys.E) && !_prevKeyboardState.IsKeyDown(Keys.E))
+            {
+                // Warp Underground (minus exactly 1000 chunks)
+                _player.Position = new Vector2(_player.Position.X, _player.Position.Y - 1_024_000);
+            }
+            else if (currentTile == 6 && currentKeyboardState.IsKeyDown(Keys.E) && !_prevKeyboardState.IsKeyDown(Keys.E))
+            {
+                // Warp Surface
+                _player.Position = new Vector2(_player.Position.X, _player.Position.Y + 1_024_000);
+            }
+
+            // --- Lava Tunnel Detection ---
+            bool nearTunnel = _player.Position.Y < -500_000;
+            if (nearTunnel && !_inTunnel)
+            {
+                _inTunnel = true;
+                // Swap to tunnel music
+                if (_tunnelMusic != null)
+                {
+                    MediaPlayer.Stop();
+                    MediaPlayer.IsRepeating = true;
+                    MediaPlayer.Volume = 0.6f;
+                    MediaPlayer.Play(_tunnelMusic);
+                }
+            }
+            else if (!nearTunnel && _inTunnel)
+            {
+                _inTunnel = false;
+                // Swap back to background music
+                if (_backgroundMusic != null)
+                {
+                    MediaPlayer.Stop();
+                    MediaPlayer.IsRepeating = true;
+                    MediaPlayer.Volume = 0.5f;
+                    MediaPlayer.Play(_backgroundMusic);
+                }
+            }
 
             // Inventory Context Menu Logic
             if (_showInventory && _showInventoryContextMenu)
@@ -879,7 +976,7 @@ namespace AntigravityMoon
                     bool hitAlien = false;
                     foreach (var alien in _aliens)
                     {
-                        Rectangle alienBounds = new Rectangle((int)alien.Position.X, (int)alien.Position.Y, 128, 64);
+                        Rectangle alienBounds = new Rectangle((int)alien.Position.X, (int)alien.Position.Y, alien.Width, alien.Height);
                         if (alienBounds.Contains(mouseWorldPos))
                         {
                             alien.TakeDamage(10f); // 10% damage per click
@@ -998,16 +1095,28 @@ namespace AntigravityMoon
                     SpawnRandomEntity();
                 }
 
-                // Alien Spawning Logic (Spawn after 30s)
-                if (!_alienSpawned)
+                // Alien Spawning Logic
+                bool inCave = _player.Position.Y < -500_000;
+                
+                if (!inCave && !_surfaceAlienSpawned)
                 {
-                    _alienSpawnTimer += dt;
-                    if (_alienSpawnTimer >= 30f)
+                    _surfaceAlienTimer += dt;
+                    if (_surfaceAlienTimer >= 30f) // 30s on surface
                     {
-                        _alienSpawned = true;
-                        // Spawn Alien at random position away from player
+                        _surfaceAlienSpawned = true;
                         Vector2 spawnPos = _player.Position + new Vector2(400, 0); // 400px to the right
-                        _aliens.Add(new Alien(spawnPos));
+                        _aliens.Add(new Alien(spawnPos, "metro_alien"));
+                    }
+                }
+                
+                if (inCave && !_caveAlienSpawned)
+                {
+                    _caveAlienTimer += dt;
+                    if (_caveAlienTimer >= 5f) // 5s underground
+                    {
+                        _caveAlienSpawned = true;
+                        Vector2 spawnPos = _player.Position + new Vector2(-400, 0); 
+                        _aliens.Add(new Alien(spawnPos, "the_destroyer"));
                     }
                 }
 
@@ -1020,7 +1129,7 @@ namespace AntigravityMoon
                     if (_aliens[i].IsDead)
                     {
                         // Spawn Electricity Particles
-                        Vector2 deathPos = _aliens[i].Position + new Vector2(64, 32); // Center of alien
+                        Vector2 deathPos = _aliens[i].Position + new Vector2(_aliens[i].Width / 2f, _aliens[i].Height / 2f); // Center of alien
                         int particleCount = _random.Next(8, 13); // 8-12 particles
                         
                         for (int p = 0; p < particleCount; p++)
@@ -1321,14 +1430,17 @@ namespace AntigravityMoon
             // Apply Camera Transform
             _spriteBatch.Begin(transformMatrix: _camera.GetViewMatrix(), samplerState: SamplerState.PointClamp);
 
-    // Calculate camera view rectangle for culling
+    // Calculate camera view rectangle for culling (account for zoom)
+    float invZoom = 1f / _camera.Zoom;
+    int viewHalfW = (int)(GraphicsDevice.Viewport.Width  * 0.5f * invZoom) + TileMap.TileSize;
+    int viewHalfH = (int)(GraphicsDevice.Viewport.Height * 0.5f * invZoom) + TileMap.TileSize;
     Rectangle cameraRect = new Rectangle(
-        (int)(_camera.Position.X - 960),
-        (int)(_camera.Position.Y - 540),
-        1920,
-        1080
+        (int)(_camera.Position.X - viewHalfW),
+        (int)(_camera.Position.Y - viewHalfH),
+        viewHalfW * 2,
+        viewHalfH * 2
     );
-    _tileMap.Draw(_spriteBatch, _textures.ContainsKey("moon_ground") ? _textures["moon_ground"] : _pixelTexture, cameraRect);
+    _tileMap.Draw(_spriteBatch, _textures.ContainsKey("moon_ground") ? _textures["moon_ground"] : _pixelTexture, cameraRect, gameTime.TotalGameTime.TotalSeconds);
             
             if (_currentGameState == GameState.Intro)
             {
@@ -1418,7 +1530,9 @@ namespace AntigravityMoon
                 // Draw Aliens
                 foreach (var alien in _aliens)
                 {
-                    alien.Draw(_spriteBatch, _textures.ContainsKey("metro_alien") ? _textures["metro_alien"] : _pixelTexture, mouseWorldPos);
+                    string textureKey = alien.Type.ToLower();
+                    Texture2D tex = _textures.ContainsKey(textureKey) ? _textures[textureKey] : _pixelTexture;
+                    alien.Draw(_spriteBatch, tex, mouseWorldPos);
                 }
 
                 // Draw Lasers
@@ -1438,6 +1552,16 @@ namespace AntigravityMoon
                 }
 
                 _player.Draw(_spriteBatch, _textures.ContainsKey("astronaut") ? _textures["astronaut"] : _pixelTexture, _textures);
+
+                // --- Lava Tube Cave world-space shadow ---
+                if (_inTunnel)
+                {
+                    _spriteBatch.Draw(_pixelTexture,
+                        new Rectangle((int)(_camera.Position.X - viewHalfW),
+                                      (int)(_camera.Position.Y - viewHalfH),
+                                      viewHalfW * 2, viewHalfH * 2),
+                        new Color(0, 0, 0) * 0.4f); // Simple darkness overlay
+                }
             }
 
             _spriteBatch.End();
@@ -1497,10 +1621,45 @@ namespace AntigravityMoon
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 210, 400, 40), Color.Gray);
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 210, (int)(_player.Oxygen * 4), 40), Color.CornflowerBlue);
 
-            // Draw Control Labels
             // Draw Control Labels (Centered)
             PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS B TO BUILD", new Vector2(GraphicsDevice.Viewport.Width / 2 - 100, 20), Color.White, 2);
             PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS I FOR INVENTORY", new Vector2(GraphicsDevice.Viewport.Width / 2 - 140, 60), Color.White, 2);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "SCROLL / Z X TO ZOOM", new Vector2(GraphicsDevice.Viewport.Width / 2 - 140, 100), Color.Gray, 2);
+
+            // Transition Prompts (Screen Space Center)
+            int drawTileX = (int)Math.Floor(_player.Position.X / TileMap.TileSize);
+            int drawTileY = (int)Math.Floor(_player.Position.Y / TileMap.TileSize);
+            int drawTile = _tileMap.GetTile(drawTileX, drawTileY);
+            if (drawTile == 3)
+            {
+                float promptPulse = 0.8f + (float)Math.Sin(gameTime.TotalGameTime.TotalSeconds * 5) * 0.2f;
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS E TO ENTER CAVE", 
+                    new Vector2(GraphicsDevice.Viewport.Width / 2 - 150, GraphicsDevice.Viewport.Height / 2 - 80), 
+                    Color.Yellow * promptPulse, 2);
+            }
+            else if (drawTile == 6)
+            {
+                float promptPulse = 0.8f + (float)Math.Sin(gameTime.TotalGameTime.TotalSeconds * 5) * 0.2f;
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS E TO CLIMB TO SURFACE", 
+                    new Vector2(GraphicsDevice.Viewport.Width / 2 - 190, GraphicsDevice.Viewport.Height / 2 - 80), 
+                    Color.Yellow * promptPulse, 2);
+            }
+
+            // --- Lava Tube Cave Screen-Space Overlay ---
+            if (_inTunnel)
+            {
+                // Dark vignette
+                if (_vignetteTexture != null)
+                {
+                    _spriteBatch.Draw(_vignetteTexture, GraphicsDevice.Viewport.Bounds, new Color(0, 0, 0) * 0.7f);
+                }
+                // Label
+                string tunnelLabel = "LAVA TUBE CAVE  -  RARE MATERIALS AHEAD!";
+                float labelPulse = 0.8f + (float)Math.Sin(gameTime.TotalGameTime.TotalSeconds * 3) * 0.2f;
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, tunnelLabel,
+                    new Vector2(GraphicsDevice.Viewport.Width / 2 - 280, GraphicsDevice.Viewport.Height - 80),
+                    new Color((int)(180 * labelPulse), (int)(180 * labelPulse), (int)(180 * labelPulse)), 2);
+            }
 
             // Draw Menus
             if (_showWorkbenchMenu)
@@ -1890,7 +2049,7 @@ namespace AntigravityMoon
                         causeMessage = "YOU STARVED TO DEATH - YOU SHOULD HAVE EATEN THAT CRISPY CORN";
                         break;
                     case DeathCause.Alien:
-                        causeMessage = "YOU WERE KILLED BY A METRO ALIEN - THANKS SCHMOLLIE...";
+                        causeMessage = "YOU WERE KILLED BY AN ALIEN - THANKS SCHMOLLIE...";
                         break;
                 }
                 
@@ -2021,6 +2180,27 @@ namespace AntigravityMoon
                             int iconY = minimapY - (scale / 2);
 
                             _spriteBatch.Draw(_pixelTexture, new Rectangle(iconX, iconY, iconSize, iconSize), structColor);
+                        }
+                    }
+                }
+
+                // Draw Tunnel Entrances on Minimap (orange dots)
+                foreach (var entrance in _tileMap.TunnelEntrances)
+                {
+                    int entTileX = (int)Math.Floor(entrance.X / TileMap.TileSize);
+                    int entTileY = (int)Math.Floor(entrance.Y / TileMap.TileSize);
+
+                    if (_tileMap.IsExplored(entTileX, entTileY))
+                    {
+                        int relX = entTileX - playerTileX;
+                        int relY = entTileY - playerTileY;
+
+                        if (Math.Abs(relX) < mapRange && Math.Abs(relY) < mapRange)
+                        {
+                            int mmX = mapX + (relX + mapRange) * scale;
+                            int mmY = mapY + (relY + mapRange) * scale;
+                            int iconSz = scale * 2;
+                            _spriteBatch.Draw(_pixelTexture, new Rectangle(mmX - scale / 2, mmY - scale / 2, iconSz, iconSz), new Color(220, 70, 0));
                         }
                     }
                 }
