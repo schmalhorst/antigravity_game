@@ -251,6 +251,8 @@
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.pdb
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.genruntimeconfig.cache
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/ref/AntigravityMoon.dll
-/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/ios-arm64/native/libopenal.dylib
-/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/iossimulator-arm64/native/libopenal.dylib
-/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/iossimulator-x64/native/libopenal.dylib
+/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/ios-arm64/native/libopenal.a
+/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/iossimulator-arm64/native/libopenal.a
+/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/iossimulator-x64/native/libopenal.a
+/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/linux-arm64/native/libopenal.so
+/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/mgcb.tool.restore

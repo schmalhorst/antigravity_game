@@ -8,28 +8,28 @@
     ".NETCoreApp,Version=v9.0": {
       "AntigravityMoon/1.0.0": {
         "dependencies": {
-          "MonoGame.Content.Builder.Task": "3.8.4",
-          "MonoGame.Framework.DesktopGL": "3.8.4"
+          "MonoGame.Content.Builder.Task": "3.8.4.1",
+          "MonoGame.Framework.DesktopGL": "3.8.4.1"
         },
         "runtime": {
           "AntigravityMoon.dll": {}
         }
       },
-      "MonoGame.Content.Builder.Task/3.8.4": {},
-      "MonoGame.Framework.DesktopGL/3.8.4": {
+      "MonoGame.Content.Builder.Task/3.8.4.1": {},
+      "MonoGame.Framework.DesktopGL/3.8.4.1": {
         "dependencies": {
-          "MonoGame.Library.OpenAL": "1.23.1.10",
+          "MonoGame.Library.OpenAL": "1.24.3.2",
           "MonoGame.Library.SDL": "2.32.2.1",
           "NVorbis": "0.10.4"
         },
         "runtime": {
           "lib/net8.0/MonoGame.Framework.dll": {
-            "assemblyVersion": "3.8.4.0",
-            "fileVersion": "3.8.4.0"
+            "assemblyVersion": "3.8.4.1",
+            "fileVersion": "3.8.4.1"
           }
         }
       },
-      "MonoGame.Library.OpenAL/1.23.1.10": {
+      "MonoGame.Library.OpenAL/1.24.3.2": {
         "runtimeTargets": {
           "runtimes/android-arm/native/libopenal.so": {
             "rid": "android-arm",
@@ -51,18 +51,23 @@
             "assetType": "native",
             "fileVersion": "0.0.0.0"
           },
-          "runtimes/ios-arm64/native/libopenal.dylib": {
+          "runtimes/ios-arm64/native/libopenal.a": {
             "rid": "ios-arm64",
             "assetType": "native",
             "fileVersion": "0.0.0.0"
           },
-          "runtimes/iossimulator-arm64/native/libopenal.dylib": {
+          "runtimes/iossimulator-arm64/native/libopenal.a": {
             "rid": "iossimulator-arm64",
             "assetType": "native",
             "fileVersion": "0.0.0.0"
           },
-          "runtimes/iossimulator-x64/native/libopenal.dylib": {
+          "runtimes/iossimulator-x64/native/libopenal.a": {
             "rid": "iossimulator-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/linux-arm64/native/libopenal.so": {
+            "rid": "linux-arm64",
             "assetType": "native",
             "fileVersion": "0.0.0.0"
           },
@@ -124,26 +129,26 @@
       "serviceable": false,
       "sha512": ""
     },
-    "MonoGame.Content.Builder.Task/3.8.4": {
+    "MonoGame.Content.Builder.Task/3.8.4.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-Oc/tp6liQ34BkBCrdQO23JDf1Z8r11kKeL9oXSlEfUiRSQYs7C0TYaKIjhfYGjSRaV7JaFIisLDToWpnf7ztKg==",
-      "path": "monogame.content.builder.task/3.8.4",
-      "hashPath": "monogame.content.builder.task.3.8.4.nupkg.sha512"
+      "sha512": "sha512-jf6IZXMiOhuybRaWQt//u+804yzMRGk3ZRvlBJG/0iusRwTunJsQvA6tMMJJc7gjUrY6rUkzRqwinKWXugyHfA==",
+      "path": "monogame.content.builder.task/3.8.4.1",
+      "hashPath": "monogame.content.builder.task.3.8.4.1.nupkg.sha512"
     },
-    "MonoGame.Framework.DesktopGL/3.8.4": {
+    "MonoGame.Framework.DesktopGL/3.8.4.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-2WR/vPNPcmQ9h4EhMkfpUfMW0Krm6pX0ElkZwSRI1IUecPuzLeXt0i9NRwGxZBUdcNdNxACCmswrxSf4B95Obg==",
-      "path": "monogame.framework.desktopgl/3.8.4",
-      "hashPath": "monogame.framework.desktopgl.3.8.4.nupkg.sha512"
+      "sha512": "sha512-YybxIIT5+Ky78E/XdkS0glyluMr2EeDZwx2LqXULAOCqiKt1+aDrjPZaqLL5qpNgBcMEHUeZJ4YjWe4TAZlWLw==",
+      "path": "monogame.framework.desktopgl/3.8.4.1",
+      "hashPath": "monogame.framework.desktopgl.3.8.4.1.nupkg.sha512"
     },
-    "MonoGame.Library.OpenAL/1.23.1.10": {
+    "MonoGame.Library.OpenAL/1.24.3.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-4/F4FFyt7OYhtEmgi/Qmv01eC6GfQ9dkIPsymgkwJ/tV7PewmWrHg/LvTKjd6R+5j/tlO8JkjsEb0Aje6bxfxw==",
-      "path": "monogame.library.openal/1.23.1.10",
-      "hashPath": "monogame.library.openal.1.23.1.10.nupkg.sha512"
+      "sha512": "sha512-nGRsXQXs+NSUC3C5w90hFQfyKdZPpBnHnyg2w+Dw/2pUH7s+CoRWTJNYbzzdJf3+aeUvfvG4rTbFvMKDDj5olA==",
+      "path": "monogame.library.openal/1.24.3.2",
+      "hashPath": "monogame.library.openal.1.24.3.2.nupkg.sha512"
     },
     "MonoGame.Library.SDL/2.32.2.1": {
       "type": "package",

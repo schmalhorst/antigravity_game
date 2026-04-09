@@ -98,6 +98,7 @@ namespace AntigravityMoon
             LoadTexture("World", "moon_ground");
             LoadTexture("World", "rock");
             LoadTexture("World", "crystal");
+            LoadTexture("World", "metal");
             LoadTexture("Structures", "greenhouse");
             LoadTexture("Structures", "workbench");
             LoadTexture("Items", "corn");
@@ -183,13 +184,7 @@ namespace AntigravityMoon
                 _tunnelMusic = _backgroundMusic;
             }
 
-            // Register Metal as a spawnable entity texture (placeholder orange color via pixel)
-            if (!_textures.ContainsKey("metal"))
-            {
-                var metalTex = new Texture2D(GraphicsDevice, 1, 1);
-                metalTex.SetData(new[] { new Color(180, 120, 40) }); // Warm metallic orange
-                _textures["metal"] = metalTex;
-            }
+            // Metal texture is now loaded from Content/Images/World/metal.png above
         }
 
         private void LoadTexture(string folder, string name)
@@ -296,6 +291,13 @@ namespace AntigravityMoon
         private const int MinimapScaleSmall = 4;
         private const int MinimapScaleLarge = 8;
 
+        // Contribution Popup
+        private bool _showContributePopup = false;
+        private Dictionary<string, int> _contributeAmounts = new Dictionary<string, int>();
+        private int _contributeFocusedField = -1; // Which field is being typed into (-1 = none)
+        private string _contributeTypingBuffer = "";
+        private List<string> _contributeMaterialKeys = new List<string>(); // Ordered keys for display
+
         private Vector2 GetInventoryPosition()
         {
             int cellSize = 40;
@@ -307,6 +309,65 @@ namespace AntigravityMoon
             int y = GraphicsDevice.Viewport.Height - height - 20; // 20px from bottom
             
             return new Vector2(x, y);
+        }
+
+        /// <summary>
+        /// Returns the material costs for each spaceship upgrade stage.
+        /// Extensible: just add new entries to the dictionaries for new materials.
+        /// </summary>
+        private Dictionary<string, int> GetSpaceshipUpgradeCosts(int currentRepairStage)
+        {
+            switch (currentRepairStage)
+            {
+                case 0: // Initial Repair - get the systems online
+                case 1: // Stage 1 -> 2
+                    return new Dictionary<string, int>
+                    {
+                        { "Metal", 500 },
+                        { "Crystal", 500 },
+                        { "Rock", 500 }
+                    };
+                case 2: // Stage 2 -> 3
+                    return new Dictionary<string, int>
+                    {
+                        { "Metal", 10000 },
+                        { "Crystal", 10000 },
+                        { "Rock", 10000 }
+                    };
+                case 3: // Stage 3 -> 4 (Full Restoration)
+                    return new Dictionary<string, int>
+                    {
+                        { "Metal", 999999 },
+                        { "Crystal", 999999 },
+                        { "Rock", 999999 }
+                    };
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>
+        /// Commits the current typing buffer to the focused contribution field,
+        /// clamping to the valid range (0 to min(inventory, still needed)).
+        /// </summary>
+        private void CommitContributeTyping()
+        {
+            if (_contributeFocusedField < 0 || _contributeFocusedField >= _contributeMaterialKeys.Count) return;
+            
+            string mat = _contributeMaterialKeys[_contributeFocusedField];
+            if (int.TryParse(_contributeTypingBuffer, out int val))
+            {
+                int have = _player.Inventory.CountItem(mat);
+                var costs = GetSpaceshipUpgradeCosts(_interactedStructure != null ? _interactedStructure.RepairStage : 0);
+                int stillNeeded = (costs != null && costs.ContainsKey(mat)) ? costs[mat] - (_interactedStructure != null ? _interactedStructure.GetContributed(mat) : 0) : 0;
+                int maxVal = Math.Min(have, Math.Max(stillNeeded, 0));
+                _contributeAmounts[mat] = Math.Clamp(val, 0, maxVal);
+            }
+            else
+            {
+                _contributeAmounts[mat] = 0;
+            }
+            _contributeTypingBuffer = _contributeAmounts[mat].ToString();
         }
 
         protected override void Update(GameTime gameTime)
@@ -333,13 +394,76 @@ namespace AntigravityMoon
             // Smooth lerp towards target zoom
             _camera.Zoom += (_targetZoom - _camera.Zoom) * Math.Min(dt * 12f, 1f);
 
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || currentKeyboardState.IsKeyDown(Keys.Escape))
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || (currentKeyboardState.IsKeyDown(Keys.Escape) && !_showContributePopup))
                 Exit();
 
             // Fullscreen Toggle
             if (currentKeyboardState.IsKeyDown(Keys.F11) && !_prevKeyboardState.IsKeyDown(Keys.F11))
             {
                 _graphics.ToggleFullScreen();
+            }
+
+            // Contribution Popup keyboard input
+            if (_showContributePopup && _contributeFocusedField >= 0)
+            {
+                // Number keys (0-9)
+                Keys[] numKeys = { Keys.D0, Keys.D1, Keys.D2, Keys.D3, Keys.D4, Keys.D5, Keys.D6, Keys.D7, Keys.D8, Keys.D9 };
+                Keys[] numPadKeys = { Keys.NumPad0, Keys.NumPad1, Keys.NumPad2, Keys.NumPad3, Keys.NumPad4, Keys.NumPad5, Keys.NumPad6, Keys.NumPad7, Keys.NumPad8, Keys.NumPad9 };
+                for (int k = 0; k < 10; k++)
+                {
+                    if ((currentKeyboardState.IsKeyDown(numKeys[k]) && !_prevKeyboardState.IsKeyDown(numKeys[k])) ||
+                        (currentKeyboardState.IsKeyDown(numPadKeys[k]) && !_prevKeyboardState.IsKeyDown(numPadKeys[k])))
+                    {
+                        _contributeTypingBuffer += k.ToString();
+                        // Clamp to valid range
+                        if (int.TryParse(_contributeTypingBuffer, out int val))
+                        {
+                            string mat = _contributeMaterialKeys[_contributeFocusedField];
+                            int have = _player.Inventory.CountItem(mat);
+                            var costs = GetSpaceshipUpgradeCosts(_interactedStructure.RepairStage);
+                            int stillNeeded = (costs != null && costs.ContainsKey(mat)) ? costs[mat] - _interactedStructure.GetContributed(mat) : 0;
+                            int maxVal = Math.Min(have, stillNeeded);
+                            val = Math.Clamp(val, 0, maxVal);
+                            _contributeAmounts[mat] = val;
+                            _contributeTypingBuffer = val.ToString();
+                        }
+                    }
+                }
+                
+                // Backspace
+                if (currentKeyboardState.IsKeyDown(Keys.Back) && !_prevKeyboardState.IsKeyDown(Keys.Back))
+                {
+                    if (_contributeTypingBuffer.Length > 0)
+                        _contributeTypingBuffer = _contributeTypingBuffer.Substring(0, _contributeTypingBuffer.Length - 1);
+                    if (_contributeTypingBuffer.Length == 0) _contributeTypingBuffer = "0";
+                    if (int.TryParse(_contributeTypingBuffer, out int val))
+                    {
+                        string mat = _contributeMaterialKeys[_contributeFocusedField];
+                        _contributeAmounts[mat] = val;
+                    }
+                }
+                
+                // Tab to cycle fields
+                if (currentKeyboardState.IsKeyDown(Keys.Tab) && !_prevKeyboardState.IsKeyDown(Keys.Tab))
+                {
+                    CommitContributeTyping();
+                    _contributeFocusedField = (_contributeFocusedField + 1) % _contributeMaterialKeys.Count;
+                    string nextMat = _contributeMaterialKeys[_contributeFocusedField];
+                    _contributeTypingBuffer = _contributeAmounts[nextMat].ToString();
+                }
+                
+                // Enter to confirm
+                if (currentKeyboardState.IsKeyDown(Keys.Enter) && !_prevKeyboardState.IsKeyDown(Keys.Enter))
+                {
+                    CommitContributeTyping();
+                    _contributeFocusedField = -1;
+                }
+            }
+            
+            // Escape closes contribute popup
+            if (_showContributePopup && currentKeyboardState.IsKeyDown(Keys.Escape) && !_prevKeyboardState.IsKeyDown(Keys.Escape))
+            {
+                _showContributePopup = false;
             }
 
             if (_currentGameState == GameState.StartMenu)
@@ -920,18 +1044,18 @@ namespace AntigravityMoon
                     }
                     else if (_showSpaceshipMenu)
                     {
-                        // Menu Rect: Centered 300x250
-                        int spWidth = 300;
-                        int spHeight = 250;
+                        // Menu Rect: Centered 350x350
+                        int spWidth = 350;
+                        int spHeight = 350;
                         int spX = (GraphicsDevice.Viewport.Width - spWidth) / 2;
                         int spY = (GraphicsDevice.Viewport.Height - spHeight) / 2;
                         
                         // Refill Button
-                        Rectangle refillBtn = new Rectangle(spX + 50, spY + 60, 200, 40);
-                        // Repair Button
-                        Rectangle repairBtn = new Rectangle(spX + 50, spY + 120, 200, 40);
+                        Rectangle refillBtn = new Rectangle(spX + 50, spY + 60, 250, 40);
+                        // Upgrade Button
+                        Rectangle upgradeBtn = new Rectangle(spX + 50, spY + 140, 250, 40);
                         // Exit Button
-                        Rectangle exitBtn = new Rectangle(spX + 250, spY + 10, 40, 40);
+                        Rectangle exitBtn = new Rectangle(spX + 300, spY + 10, 40, 40);
 
                         if (refillBtn.Contains(mousePos))
                         {
@@ -940,36 +1064,160 @@ namespace AntigravityMoon
                             {
                                 _player.RefillOxygen();
                                 _showSpaceshipMenu = false;
-                                _prevMouseState = currentMouseState; // Update state
+                                _prevMouseState = currentMouseState;
                                 return;
                             }
                         }
-                        else if (_interactedStructure != null && _interactedStructure.RepairStage == 0 && repairBtn.Contains(mousePos))
+                        else if (_interactedStructure != null && _interactedStructure.RepairStage < 4 && upgradeBtn.Contains(mousePos) && !_showContributePopup)
                         {
-                            // Cost: 20 Crystal, 30 Rock
-                            int crystalCount = _player.Inventory.CountItem("Crystal");
-                            int rockCount = _player.Inventory.CountItem("Rock");
-                            
-                            if (crystalCount >= 20 && rockCount >= 30)
+                            // Open contribution popup
+                            var upgradeCosts = GetSpaceshipUpgradeCosts(_interactedStructure.RepairStage);
+                            if (upgradeCosts != null)
                             {
-                                 _player.Inventory.RemoveItems("Crystal", 20);
-                                 _player.Inventory.RemoveItems("Rock", 30);
-                                 _interactedStructure.UpgradeRepairStage();
-                                 _showSpaceshipMenu = false;
-                                 _prevMouseState = currentMouseState; // Update state
-                                 return;
+                                _showContributePopup = true;
+                                _contributeAmounts.Clear();
+                                _contributeMaterialKeys.Clear();
+                                _contributeFocusedField = -1;
+                                _contributeTypingBuffer = "";
+                                foreach (var cost in upgradeCosts)
+                                {
+                                    _contributeMaterialKeys.Add(cost.Key);
+                                    _contributeAmounts[cost.Key] = 0;
+                                }
+                                _prevMouseState = currentMouseState;
+                                return;
                             }
+                        }
+                        else if (_showContributePopup)
+                        {
+                            // Handle contribute popup clicks
+                            int popW = 380;
+                            int popH = 60 + _contributeMaterialKeys.Count * 65 + 60;
+                            int popX = (GraphicsDevice.Viewport.Width - popW) / 2;
+                            int popY = (GraphicsDevice.Viewport.Height - popH) / 2;
+                            
+                            var upgradeCosts = GetSpaceshipUpgradeCosts(_interactedStructure.RepairStage);
+                            bool clickedInside = false;
+                            
+                            for (int i = 0; i < _contributeMaterialKeys.Count; i++)
+                            {
+                                string mat = _contributeMaterialKeys[i];
+                                int rowY = popY + 55 + i * 65 + 18;
+                                
+                                // Minus button
+                                Rectangle minusBtn = new Rectangle(popX + 30, rowY, 35, 30);
+                                // Plus button
+                                Rectangle plusBtn = new Rectangle(popX + 310, rowY, 35, 30);
+                                // Number field (clickable to focus)
+                                Rectangle numField = new Rectangle(popX + 75, rowY, 225, 30);
+                                
+                                if (minusBtn.Contains(mousePos))
+                                {
+                                    int current = _contributeAmounts[mat];
+                                    if (current > 0) _contributeAmounts[mat] = current - 1;
+                                    // Update typing buffer if this field is focused
+                                    if (_contributeFocusedField == i) _contributeTypingBuffer = _contributeAmounts[mat].ToString();
+                                    clickedInside = true;
+                                }
+                                else if (plusBtn.Contains(mousePos))
+                                {
+                                    int current = _contributeAmounts[mat];
+                                    int have = _player.Inventory.CountItem(mat);
+                                    int stillNeeded = (upgradeCosts != null && upgradeCosts.ContainsKey(mat)) ? 
+                                        upgradeCosts[mat] - _interactedStructure.GetContributed(mat) : 0;
+                                    int maxAdd = Math.Min(have, stillNeeded);
+                                    if (current < maxAdd) _contributeAmounts[mat] = current + 1;
+                                    if (_contributeFocusedField == i) _contributeTypingBuffer = _contributeAmounts[mat].ToString();
+                                    clickedInside = true;
+                                }
+                                else if (numField.Contains(mousePos))
+                                {
+                                    // Commit previous field
+                                    if (_contributeFocusedField >= 0 && _contributeFocusedField < _contributeMaterialKeys.Count)
+                                    {
+                                        CommitContributeTyping();
+                                    }
+                                    _contributeFocusedField = i;
+                                    _contributeTypingBuffer = _contributeAmounts[mat].ToString();
+                                    clickedInside = true;
+                                }
+                            }
+                            
+                            // Confirm button
+                            Rectangle confirmBtn = new Rectangle(popX + 30, popY + popH - 55, 140, 40);
+                            // Cancel button
+                            Rectangle cancelBtn = new Rectangle(popX + 210, popY + popH - 55, 140, 40);
+                            
+                            if (confirmBtn.Contains(mousePos))
+                            {
+                                // Commit any typing in progress
+                                CommitContributeTyping();
+                                
+                                // Actually contribute the chosen amounts
+                                bool contributed = false;
+                                foreach (var mat in _contributeMaterialKeys)
+                                {
+                                    int amount = _contributeAmounts[mat];
+                                    if (amount > 0)
+                                    {
+                                        _player.Inventory.RemoveItems(mat, amount);
+                                        _interactedStructure.ContributeMaterial(mat, amount);
+                                        contributed = true;
+                                    }
+                                }
+                                
+                                // Check if all costs are now fully met
+                                if (contributed && upgradeCosts != null)
+                                {
+                                    bool allMet = true;
+                                    foreach (var cost in upgradeCosts)
+                                    {
+                                        if (_interactedStructure.GetContributed(cost.Key) < cost.Value)
+                                        {
+                                            allMet = false;
+                                            break;
+                                        }
+                                    }
+                                    if (allMet)
+                                    {
+                                        _interactedStructure.ClearContributions();
+                                        _interactedStructure.UpgradeRepairStage();
+                                    }
+                                }
+                                
+                                _showContributePopup = false;
+                                clickedInside = true;
+                            }
+                            else if (cancelBtn.Contains(mousePos))
+                            {
+                                _showContributePopup = false;
+                                clickedInside = true;
+                            }
+                            
+                            if (!clickedInside)
+                            {
+                                // Clicked outside the popup — unfocus field
+                                if (_contributeFocusedField >= 0)
+                                {
+                                    CommitContributeTyping();
+                                    _contributeFocusedField = -1;
+                                }
+                            }
+                            
+                            _prevMouseState = currentMouseState;
+                            return;
                         }
                         else if (exitBtn.Contains(mousePos))
                         {
+                            _showContributePopup = false;
                             _showSpaceshipMenu = false;
-                            _prevMouseState = currentMouseState; // Update state
+                            _prevMouseState = currentMouseState;
                             return;
                         }
-                        else if (!new Rectangle(spX, spY, spWidth, spHeight).Contains(mousePos))
+                        else if (!new Rectangle(spX, spY, spWidth, spHeight).Contains(mousePos) && !_showContributePopup)
                         {
                             _showSpaceshipMenu = false;
-                            _prevMouseState = currentMouseState; // Update state
+                            _prevMouseState = currentMouseState;
                             return;
                         }
                     }
@@ -1982,8 +2230,8 @@ namespace AntigravityMoon
             // Draw Spaceship Menu
             if (_showSpaceshipMenu)
             {
-                int menuWidth = 300;
-                int menuHeight = 250; // Increased height
+                int menuWidth = 350;
+                int menuHeight = 350;
                 int menuX = (GraphicsDevice.Viewport.Width - menuWidth) / 2;
                 int menuY = (GraphicsDevice.Viewport.Height - menuHeight) / 2;
                 
@@ -1992,46 +2240,158 @@ namespace AntigravityMoon
                 _spriteBatch.Draw(_pixelTexture, new Rectangle(menuX + 5, menuY + 5, menuWidth - 10, menuHeight - 10), Color.Black);
                 
                 // Title
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "SPACESHIP", new Vector2(menuX + 100, menuY + 20), Color.White, 2);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "SPACESHIP", new Vector2(menuX + 110, menuY + 20), Color.White, 2);
                 
                 // Exit Button
-                Rectangle exitBtn = new Rectangle(menuX + 250, menuY + 10, 40, 40);
+                Rectangle exitBtn = new Rectangle(menuX + 300, menuY + 10, 40, 40);
                 _spriteBatch.Draw(_pixelTexture, exitBtn, Color.Red);
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "X", new Vector2(exitBtn.X + 12, exitBtn.Y + 10), Color.White, 2);
 
                 // Refill Button
                 bool canAffordRefill = _player.Inventory.CountItem("Rock") >= 2;
                 Color refillBtnColor = canAffordRefill ? Color.Green : Color.Gray;
-                Rectangle refillBtn = new Rectangle(menuX + 50, menuY + 60, 200, 40);
+                Rectangle refillBtn = new Rectangle(menuX + 50, menuY + 60, 250, 40);
                 
                 _spriteBatch.Draw(_pixelTexture, refillBtn, refillBtnColor);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "REFILL OXYJIN", new Vector2(refillBtn.X + 20, refillBtn.Y + 10), Color.Black, 2);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "REFILL OXYJIN", new Vector2(refillBtn.X + 40, refillBtn.Y + 10), Color.Black, 2);
                 Color refillCostColor = canAffordRefill ? Color.White : Color.Red;
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "COST: 2 ROCKS", new Vector2(menuX + 80, menuY + 105), refillCostColor, 2);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "COST: 2 ROCKS", new Vector2(menuX + 100, menuY + 105), refillCostColor, 2);
                 
-                // Repair Button
+                // Upgrade Section
                 if (_interactedStructure != null)
                 {
-                    if (_interactedStructure.RepairStage == 0)
+                    int stage = _interactedStructure.RepairStage;
+                    
+                    if (stage >= 4)
                     {
-                        int crystalCount = _player.Inventory.CountItem("Crystal");
-                        int rockCount = _player.Inventory.CountItem("Rock");
-                        bool canAffordRepair = crystalCount >= 20 && rockCount >= 30;
-                        
-                        Rectangle repairBtn = new Rectangle(menuX + 50, menuY + 130, 200, 40);
-                        _spriteBatch.Draw(_pixelTexture, repairBtn, canAffordRepair ? Color.Green : Color.Gray);
-                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "REPAIR (STG 1)", new Vector2(repairBtn.X + 25, repairBtn.Y + 10), Color.Black, 2);
-                        
-                        string costStr = "20 CRYS, 30 ROCK";
-                        Color repairCostColor = canAffordRepair ? Color.White : Color.Red;
-                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, costStr, new Vector2(menuX + 60, menuY + 175), repairCostColor, 2);
+                        // Fully repaired!
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "SHIP FULLY RESTORED!", new Vector2(menuX + 50, menuY + 150), Color.Cyan, 2);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "READY FOR LAUNCH", new Vector2(menuX + 70, menuY + 180), Color.LimeGreen, 2);
                     }
                     else
                     {
-                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "REPAIRS O.K.", new Vector2(menuX + 80, menuY + 140), Color.Green, 2);
-                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "(WAIT FOR METAL)", new Vector2(menuX + 60, menuY + 165), Color.Gray, 2);
+                        // Get costs for current stage
+                        var costs = GetSpaceshipUpgradeCosts(stage);
+                        string[] stageNames = { "INITIAL REPAIR", "HULL REBUILD", "ENGINE RESTORE", "FULL RESTORATION" };
+                        string stageName = stage < stageNames.Length ? stageNames[stage] : "UPGRADE";
+                        
+                        // Check if player has anything to contribute
+                        bool hasAnythingToGive = false;
+                        if (costs != null)
+                        {
+                            foreach (var cost in costs)
+                            {
+                                int contributed = _interactedStructure.GetContributed(cost.Key);
+                                int have = _player.Inventory.CountItem(cost.Key);
+                                if (have > 0 && contributed < cost.Value) { hasAnythingToGive = true; break; }
+                            }
+                        }
+                        
+                        Rectangle upgradeBtn = new Rectangle(menuX + 50, menuY + 140, 250, 40);
+                        _spriteBatch.Draw(_pixelTexture, upgradeBtn, hasAnythingToGive ? Color.Green : Color.Gray);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "CONTRIBUTE", new Vector2(upgradeBtn.X + 50, upgradeBtn.Y + 10), Color.Black, 2);
+                        
+                        // Stage name
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, stageName, new Vector2(menuX + 80, menuY + 130), Color.White, 1);
+                        
+                        // Draw costs with contributed/needed and progress bars
+                        int costY = menuY + 195;
+                        if (costs != null)
+                        {
+                            foreach (var cost in costs)
+                            {
+                                int contributed = _interactedStructure.GetContributed(cost.Key);
+                                bool fulfilled = contributed >= cost.Value;
+                                Color costColor = fulfilled ? Color.LimeGreen : Color.Orange;
+                                string costStr = $"{cost.Key.ToUpper()}: {contributed}/{cost.Value}";
+                                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, costStr, new Vector2(menuX + 60, costY -10), costColor, 2);
+                                
+                                // Progress bar
+                                int barWidth = 220;
+                                int barHeight = 6;
+                                float progress = Math.Min(1f, (float)contributed / cost.Value);
+                                _spriteBatch.Draw(_pixelTexture, new Rectangle(menuX + 60, costY + 20, barWidth, barHeight), Color.DarkGray);
+                                _spriteBatch.Draw(_pixelTexture, new Rectangle(menuX + 60, costY + 20, (int)(barWidth * progress), barHeight), fulfilled ? Color.LimeGreen : Color.Orange);
+                                
+                                costY += 35;
+                            }
+                        }
+                        
+                        // Stage indicator
+                        string progressStr = $"STAGE {stage}/4";
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, progressStr, new Vector2(menuX + 120, menuY + menuHeight - 40), Color.Yellow, 2);
                     }
                 }
+            }
+            // Draw Contribution Popup (on top of spaceship menu)
+            if (_showContributePopup && _interactedStructure != null)
+            {
+                int popW = 380;
+                int popH = 60 + _contributeMaterialKeys.Count * 65 + 60;
+                int popX = (GraphicsDevice.Viewport.Width - popW) / 2;
+                int popY = (GraphicsDevice.Viewport.Height - popH) / 2;
+                
+                // Background
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(popX - 2, popY - 2, popW + 4, popH + 4), Color.White);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(popX, popY, popW, popH), new Color(20, 20, 30));
+                
+                // Title
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "CONTRIBUTE MATERIALS", new Vector2(popX + 40, popY + 15), Color.Cyan, 2);
+                
+                var upgradeCosts = GetSpaceshipUpgradeCosts(_interactedStructure.RepairStage);
+                
+                for (int i = 0; i < _contributeMaterialKeys.Count; i++)
+                {
+                    string mat = _contributeMaterialKeys[i];
+                    int labelY = popY + 55 + i * 65;
+                    int controlY = labelY + 18;
+                    
+                    int have = _player.Inventory.CountItem(mat);
+                    int alreadyContributed = _interactedStructure.GetContributed(mat);
+                    int needed = (upgradeCosts != null && upgradeCosts.ContainsKey(mat)) ? upgradeCosts[mat] : 0;
+                    int stillNeeded = needed - alreadyContributed;
+                    
+                    // Material name + info on same line
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, mat.ToUpper(), new Vector2(popX + 30, labelY - 10), Color.White, 2);
+                    string infoStr = $"HAVE {have}  NEED {Math.Max(stillNeeded, 0)}";
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, infoStr, new Vector2(popX + 180, labelY + 3), Color.Gray, 1);
+                    
+                    // Minus button
+                    Rectangle minusBtn = new Rectangle(popX + 30, controlY, 35, 30);
+                    _spriteBatch.Draw(_pixelTexture, minusBtn, Color.DarkRed);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "-", new Vector2(minusBtn.X + 12, minusBtn.Y + 6), Color.White, 2);
+                    
+                    // Number input field
+                    Rectangle numField = new Rectangle(popX + 75, controlY, 225, 30);
+                    bool isFocused = (_contributeFocusedField == i);
+                    _spriteBatch.Draw(_pixelTexture, numField, isFocused ? new Color(60, 60, 80) : new Color(40, 40, 50));
+                    // Border for focused field
+                    if (isFocused)
+                    {
+                        _spriteBatch.Draw(_pixelTexture, new Rectangle(numField.X - 1, numField.Y - 1, numField.Width + 2, 1), Color.Cyan);
+                        _spriteBatch.Draw(_pixelTexture, new Rectangle(numField.X - 1, numField.Y + numField.Height, numField.Width + 2, 1), Color.Cyan);
+                        _spriteBatch.Draw(_pixelTexture, new Rectangle(numField.X - 1, numField.Y, 1, numField.Height), Color.Cyan);
+                        _spriteBatch.Draw(_pixelTexture, new Rectangle(numField.X + numField.Width, numField.Y, 1, numField.Height), Color.Cyan);
+                    }
+                    
+                    string displayNum = isFocused ? _contributeTypingBuffer : _contributeAmounts[mat].ToString();
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, displayNum, new Vector2(numField.X + 10, numField.Y + 6), Color.White, 2);
+                    
+                    // Plus button
+                    Rectangle plusBtn = new Rectangle(popX + 310, controlY, 35, 30);
+                    _spriteBatch.Draw(_pixelTexture, plusBtn, Color.DarkGreen);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "+", new Vector2(plusBtn.X + 10, plusBtn.Y + 6), Color.White, 2);
+                }
+                
+                // Confirm button
+                Rectangle confirmBtn = new Rectangle(popX + 30, popY + popH - 55, 140, 40);
+                _spriteBatch.Draw(_pixelTexture, confirmBtn, Color.Green);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "CONFIRM", new Vector2(confirmBtn.X + 20, confirmBtn.Y + 10), Color.Black, 2);
+                
+                // Cancel button
+                Rectangle cancelBtn = new Rectangle(popX + 210, popY + popH - 55, 140, 40);
+                _spriteBatch.Draw(_pixelTexture, cancelBtn, Color.DarkRed);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "CANCEL", new Vector2(cancelBtn.X + 25, cancelBtn.Y + 10), Color.White, 2);
             }
 
             // Draw Loot Menu
@@ -2357,7 +2717,8 @@ namespace AntigravityMoon
                         Type = s.Type,
                         X = s.Position.X,
                         Y = s.Position.Y,
-                        RepairStage = s.RepairStage
+                        RepairStage = s.RepairStage,
+                        ContributedMaterials = s.ContributedMaterials.Count > 0 ? new Dictionary<string, int>(s.ContributedMaterials) : null
                     });
                 }
             }
@@ -2463,6 +2824,13 @@ namespace AntigravityMoon
                         else if (currentData.Type == "Spaceship") { s.Width = 384; s.Height = 168; } // Ensure Size
                         
                         s.RepairStage = currentData.RepairStage;
+                        if (currentData.ContributedMaterials != null)
+                        {
+                            foreach (var kvp in currentData.ContributedMaterials)
+                            {
+                                s.ContributeMaterial(kvp.Key, kvp.Value);
+                            }
+                        }
                         _entityManager.AddEntity(s);
                     }
                 }

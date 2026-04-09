@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System.Collections.Generic;
 
 namespace AntigravityMoon
 {
@@ -19,6 +20,27 @@ namespace AntigravityMoon
         
         // Repair System
         public int RepairStage { get; set; } = 0;
+        
+        // Incremental contribution tracking for upgrades
+        public Dictionary<string, int> ContributedMaterials { get; set; } = new Dictionary<string, int>();
+        
+        public void ContributeMaterial(string material, int amount)
+        {
+            if (ContributedMaterials.ContainsKey(material))
+                ContributedMaterials[material] += amount;
+            else
+                ContributedMaterials[material] = amount;
+        }
+        
+        public int GetContributed(string material)
+        {
+            return ContributedMaterials.ContainsKey(material) ? ContributedMaterials[material] : 0;
+        }
+        
+        public void ClearContributions()
+        {
+            ContributedMaterials.Clear();
+        }
 
         public Structure(Vector2 position, string type, int width, int height) 
             : base(position, type, false, false, true) // Default: Solid, Not Harvestable
