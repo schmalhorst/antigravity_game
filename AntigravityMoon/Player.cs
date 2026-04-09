@@ -433,7 +433,7 @@ namespace AntigravityMoon
                 if (structureType == "Workbench") { w = 32; h = 32; }
 
                 Texture2D ghostTexture = playerTexture; // Fallback
-                string key = structureType.ToLower();
+                string key = structureType.ToLower().Replace(" ", "_");
                 if (textures != null && textures.ContainsKey(key))
                 {
                     ghostTexture = textures[key];

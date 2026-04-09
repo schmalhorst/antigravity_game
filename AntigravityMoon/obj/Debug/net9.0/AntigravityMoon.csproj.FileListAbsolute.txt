@@ -233,17 +233,12 @@
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/android-arm64/native/libopenal.so
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/android-x64/native/libopenal.so
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/android-x86/native/libopenal.so
-/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/ios-arm64/native/libopenal.a
-/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/iossimulator-arm64/native/libopenal.a
-/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/iossimulator-x64/native/libopenal.a
-/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/linux-arm64/native/libopenal.so
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/linux-x64/native/libopenal.so
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/osx/native/libopenal.dylib
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/win-x64/native/openal.dll
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/linux-x64/native/libSDL2-2.0.so.0
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/osx/native/libSDL2-2.0.0.dylib
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/win-x64/native/SDL2.dll
-/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/mgcb.tool.restore
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.csproj.AssemblyReference.cache
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.GeneratedMSBuildEditorConfig.editorconfig
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.AssemblyInfoInputs.cache
@@ -256,3 +251,6 @@
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.pdb
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/AntigravityMoon.genruntimeconfig.cache
 /Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/obj/Debug/net9.0/ref/AntigravityMoon.dll
+/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/ios-arm64/native/libopenal.dylib
+/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/iossimulator-arm64/native/libopenal.dylib
+/Users/johnschmalhorst/Projects/antigravity_game/AntigravityMoon/bin/Debug/net9.0/runtimes/iossimulator-x64/native/libopenal.dylib

@@ -54,7 +54,7 @@ namespace AntigravityMoon
                     continue;
                 }
 
-                string key = entity.Type.ToLower();
+                string key = entity.Type.ToLower().Replace(" ", "_");
                 if (entity is Structure s && key == "spaceship")
                 {
                     if (s.RepairStage <= 1) key = "spaceship_broken1";

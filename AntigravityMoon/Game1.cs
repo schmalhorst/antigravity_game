@@ -112,7 +112,7 @@ namespace AntigravityMoon
             LoadTexture("Structures", "spaceship_broken2");
             LoadTexture("Structures", "spaceship_broken3");
             LoadTexture("Structures", "mineral");
-            LoadTexture("World", "bionic_tech");
+            LoadTexture("Structures", "bionic_tech");
             LoadTexture("Structures", "reactor");
             LoadTexture("Structures", "reactor_empty");
             LoadTexture("Structures", "radar");
@@ -383,12 +383,12 @@ namespace AntigravityMoon
 
                         // Create persistent spaceship structure
                         // Position, Type, Width, Height
-                        Structure ship = new Structure(_spaceshipPosition, "Spaceship", 96, 96);
+                        Structure ship = new Structure(_spaceshipPosition, "Spaceship", 384, 168);
                         ship.RepairStage = 1;
                         _entityManager.AddEntity(ship);
                         
-                        // Ensure player is at spawn point (304) which is below the ship (200+64=264)
-                        _player.Position = new Vector2(400, 304);
+                        // Ensure player is at a spawn point below the ship
+                        _player.Position = new Vector2(_spaceshipPosition.X + 192, _spaceshipPosition.Y + 180);
                     }
                 }
             }
@@ -1485,8 +1485,11 @@ namespace AntigravityMoon
             
             if (_currentGameState == GameState.Intro)
             {
-                 // Draw the spaceship dropping
-                 _spriteBatch.Draw(_spaceshipTexture, new Rectangle((int)_spaceshipPosition.X, (int)_spaceshipPosition.Y, 96, 96), Color.White);
+                 // Draw the spaceship dropping (preserving original aspect ratio)
+                 int targetWidth = 384; 
+                 int targetHeight = (int)(targetWidth * ((float)_spaceshipTexture.Height / _spaceshipTexture.Width));
+                 
+                 _spriteBatch.Draw(_spaceshipTexture, new Rectangle((int)_spaceshipPosition.X, (int)_spaceshipPosition.Y, targetWidth, targetHeight), Color.White);
             }
             else if (_currentGameState == GameState.Playing)
             {
@@ -2457,7 +2460,7 @@ namespace AntigravityMoon
                         if (currentData.Type == "Workbench") { s.Width = 40; s.Height = 40; }
                         else if (currentData.Type == "HAB") { s.Width = 80; s.Height = 80; }
                         else if (currentData.Type == "Machinery") { s.Width = 160; s.Height = 160; }
-                        else if (currentData.Type == "Spaceship") { s.Width = 96; s.Height = 96; } // Ensure Size
+                        else if (currentData.Type == "Spaceship") { s.Width = 384; s.Height = 168; } // Ensure Size
                         
                         s.RepairStage = currentData.RepairStage;
                         _entityManager.AddEntity(s);
@@ -2465,14 +2468,13 @@ namespace AntigravityMoon
                 }
                 
                 // Unstuck Logic: Check if player is inside the Spaceship
-                // Spaceship is at 400,200 size 64x64 => Rect 400,200,64,64
-                Rectangle shipRect = new Rectangle(400, 200, 64, 64);
+                Rectangle shipRect = new Rectangle(400, 200, 384, 168);
                 Rectangle playerRect = new Rectangle((int)_player.Position.X, (int)_player.Position.Y, 32, 64); // Approx player size
                 
                 if (shipRect.Intersects(playerRect))
                 {
-                    // Move player down to safe spot
-                    _player.Position = new Vector2(400, 304);
+                    // Move player down to safe spot below the ship
+                    _player.Position = new Vector2(400 + 192, 200 + 180);
                     _camera.Position = _player.Position;
                 }
                 
