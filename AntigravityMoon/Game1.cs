@@ -151,8 +151,8 @@ namespace AntigravityMoon
             _spaceshipTexture = _textures["spaceship"];
             _spaceshipPosition = new Vector2(400, -100); // Start off screen
             
-            LoadTexture("World", "vignette");
-            if (_textures.ContainsKey("vignette")) _vignetteTexture = _textures["vignette"];
+            // Generate vignette programmatically instead of relying on an image
+            _vignetteTexture = GenerateVignetteTexture(512);
             if (_textures.ContainsKey("floppy")) _floppyIcon = _textures["floppy"];
 
             // Load Global Font
@@ -1415,6 +1415,33 @@ namespace AntigravityMoon
             }
         }
 
+        private Texture2D GenerateVignetteTexture(int size)
+        {
+            Texture2D tex = new Texture2D(GraphicsDevice, size, size);
+            Color[] data = new Color[size * size];
+            Vector2 center = new Vector2(size / 2f, size / 2f);
+            float maxDist = size / 2f;
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dist = Vector2.Distance(center, new Vector2(x, y));
+                    // Start fading out towards the edges (alpha 0 at center, 1 at edge)
+                    float alpha = MathHelper.Clamp((dist - maxDist * 0.2f) / (maxDist * 0.8f), 0f, 1f);
+                    
+                    // smoothstep
+                    alpha = alpha * alpha * (3f - 2f * alpha);
+
+                    // Pre-multiply alpha for MonoGame
+                    byte a = (byte)(alpha * 255);
+                    data[y * size + x] = new Color(a, a, a, a);
+                }
+            }
+            tex.SetData(data);
+            return tex;
+        }
+
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.Black);
@@ -1589,13 +1616,19 @@ namespace AntigravityMoon
             {
                 _player.Inventory.Draw(_spriteBatch, _pixelTexture, _textures, GetInventoryPosition());
                 
-                // Draw Sort Button
                 Vector2 invPos = GetInventoryPosition();
+                
+                // Draw Info
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"BACKPACK LVL: {_player.Inventory.UpgradeLevel}", new Vector2(invPos.X, invPos.Y - 65), Color.Cyan, 2);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"SUIT LVL: {_player.SuitLevel}", new Vector2(invPos.X + 240, invPos.Y - 65), Color.Orange, 2);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"POS: [ {(int)_player.Position.X}, {(int)_player.Position.Y} ]", new Vector2(invPos.X, invPos.Y - 40), Color.Yellow, 2);
+
+                // Draw Sort Button
                 int invWidth = _player.Inventory.Cols * 45 + 5;
                 Rectangle sortBtn = new Rectangle((int)invPos.X + invWidth - 60, (int)invPos.Y - 25, 60, 20);
                 
                 _spriteBatch.Draw(_pixelTexture, sortBtn, Color.Gray);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "-> <-", new Vector2(sortBtn.X + 10, sortBtn.Y + 3), Color.White, 2);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "SORT", new Vector2(sortBtn.X + 5, sortBtn.Y - 3), Color.White, 2);
             }
 
             // Draw Health Bar
@@ -1611,11 +1644,25 @@ namespace AntigravityMoon
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 130, 400, 40), Color.Gray);
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 130, (int)(_player.Hunger * 4), 40), Color.Orange);
 
-                // Draw Vignette if danger
+                // Draw Vignettes
                 if (_vignetteTexture != null)
                 {
+                    // Draw red health vignette overlay based on missing health
+                    float healthPercent = _player.Health / 100f; // max health 100
+                    if (healthPercent < 1.0f)
+                    {
+                        float healthAlpha = (1.0f - healthPercent) * 0.9f; // intensify as it gets lower
+                        if (healthPercent < 0.2f)
+                        {
+                            // pulse strongly when very low
+                            float pulse = 0.8f + (float)Math.Sin(gameTime.TotalGameTime.TotalSeconds * 5) * 0.2f;
+                            healthAlpha *= pulse;
+                        }
+                        _spriteBatch.Draw(_vignetteTexture, GraphicsDevice.Viewport.Bounds, Color.Red * healthAlpha);
+                    }
+
+                    // Oxygen and Hunger danger pulse
                     float danger = 0f;
-                    if (_player.Health < 20) danger = Math.Max(danger, (20 - _player.Health) / 20f);
                     if (_player.Oxygen < 20) danger = Math.Max(danger, (20 - _player.Oxygen) / 20f);
                     if (_player.Hunger < 20) danger = Math.Max(danger, (20 - _player.Hunger) / 20f);
 
@@ -1636,7 +1683,7 @@ namespace AntigravityMoon
             _spriteBatch.Draw(_pixelTexture, new Rectangle(20, 210, (int)(_player.Oxygen * 4), 40), Color.CornflowerBlue);
 
             // Draw Control Labels (Centered)
-            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS B TO BUILD", new Vector2(GraphicsDevice.Viewport.Width / 2 - 100, 20), Color.White, 2);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS B TO BUILD", new Vector2(GraphicsDevice.Viewport.Width / 2 - 140, 20), Color.White, 2);
             PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "PRESS I FOR INVENTORY", new Vector2(GraphicsDevice.Viewport.Width / 2 - 140, 60), Color.White, 2);
             PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "SCROLL / Z X TO ZOOM", new Vector2(GraphicsDevice.Viewport.Width / 2 - 140, 100), Color.Gray, 2);
 

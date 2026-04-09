@@ -9,7 +9,7 @@ namespace AntigravityMoon
     {
         public int Rows { get; private set; } = 1;
         public int Cols { get; private set; } = 4;
-        public const int MaxStack = 10;
+        public int MaxStack { get; private set; } = 10;
         public int UpgradeLevel { get; private set; } = 0;
 
         public struct InventorySlot
@@ -44,6 +44,7 @@ namespace AntigravityMoon
                 // Upgrade to 8 cols, 1 row
                 UpgradeLevel++;
                 Resize(8, 1);
+                MaxStack = 50;
                 return true;
             }
             else if (UpgradeLevel == 1)
@@ -51,6 +52,7 @@ namespace AntigravityMoon
                 // Upgrade to 8 cols, 2 rows
                 UpgradeLevel++;
                 Resize(8, 2);
+                MaxStack = 99;
                 return true;
             }
             return false;
@@ -240,6 +242,7 @@ namespace AntigravityMoon
         {
             Inventory newInv = new Inventory();
             newInv.UpgradeLevel = this.UpgradeLevel;
+            newInv.MaxStack = this.MaxStack;
             newInv.Rows = this.Rows;
             newInv.Cols = this.Cols;
             newInv._items = new InventorySlot[this.Cols, this.Rows]; // Initialize the _items array in the new inventory
