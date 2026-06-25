@@ -534,6 +534,13 @@ namespace AntigravityMoon
             Oxygen = 100f;
         }
 
+        public void SleepRestore()
+        {
+            Health = 100f;
+            Oxygen = 100f;
+            Hunger = 100f;
+        }
+
         public void TakeDamage(float amount)
         {
             Health -= amount;

@@ -129,6 +129,14 @@ namespace AntigravityMoon
             
             // Try loading crops.json
             string cropsPath = Path.Combine(Content.RootDirectory, "crops.json");
+            if (!File.Exists(cropsPath))
+            {
+                cropsPath = Path.Combine("AntigravityMoon", Content.RootDirectory, "crops.json");
+            }
+            if (!File.Exists(cropsPath))
+            {
+                cropsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Content.RootDirectory, "crops.json");
+            }
             if (File.Exists(cropsPath))
             {
                 try
@@ -192,6 +200,15 @@ namespace AntigravityMoon
         private void LoadTexture(string folder, string name)
         {
             string path = Path.Combine("Content", "Images", folder, name + ".png");
+            if (!File.Exists(path))
+            {
+                path = Path.Combine("AntigravityMoon", "Content", "Images", folder, name + ".png");
+            }
+            if (!File.Exists(path))
+            {
+                path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Content", "Images", folder, name + ".png");
+            }
+
             if (File.Exists(path))
             {
                 using (var stream = File.OpenRead(path))
@@ -223,6 +240,44 @@ namespace AntigravityMoon
             {
                 // Fallback to pixel texture if file missing
                 _textures[name] = _pixelTexture; 
+            }
+        }
+
+        private void TriggerDialogue(string speaker, List<string> lines)
+        {
+            _dialogueSpeaker = speaker;
+            _activeDialogueLines = new List<string>(lines);
+            _currentDialogueIndex = 0;
+        }
+
+        private void TriggerMorningDialogue()
+        {
+            if (_day == 2)
+            {
+                TriggerDialogue("L.A.I.K.A. (AI)", new List<string>
+                {
+                    "Good morning, Commander! A new lunar day begins.",
+                    "Base sensors have detected high-energy Crystal fluctuations\ndeep in the cave networks (lava tubes).",
+                    "We need to explore those cavern tunnels to gather Metal\nand repair our ship's power grids.",
+                    "Look for dark crater openings on the surface, stand over\nthem, and press 'E' to descend."
+                });
+            }
+            else if (_day == 3)
+            {
+                TriggerDialogue("L.A.I.K.A. (AI)", new List<string>
+                {
+                    "Good morning! Did you know Selenite crop soil is\nrich in helium-3 isotopes?",
+                    "Eating crops like Crispy Corn or Raw Potatoes will boost\nyour maximum oxygen supply and hunger.",
+                    "Be sure to construct Fences (cost: 1 Rock) around your base.\nAliens are territorial and will attack your homestead!"
+                });
+            }
+            else if (_day == 5)
+            {
+                TriggerDialogue("L.A.I.K.A. (AI)", new List<string>
+                {
+                    "Warning: High-altitude solar winds detected.",
+                    "This radiation increases alien aggression levels.\nEnsure your homestead is protected by fences!"
+                });
             }
         }
 
@@ -262,6 +317,38 @@ namespace AntigravityMoon
         private float _introTimer = 0f;
         private Vector2 _spaceshipPosition;
         private Texture2D _spaceshipTexture;
+
+        // Story State
+        public enum StoryState
+        {
+            NotStarted,
+            IntroDialogue,
+            WaitingForWorkbench,
+            WorkbenchBuiltDialogue,
+            WaitingForGreenhouse,
+            GreenhouseBuiltDialogue,
+            WaitingForCave,
+            CaveEnteredDialogue,
+            WaitingForReactor,
+            ReactorBuiltDialogue,
+            WaitingForRadar,
+            RadarBuiltDialogue,
+            WaitingForShipRepair,
+            ShipRepairedDialogue
+        }
+        private StoryState _currentStoryState = StoryState.NotStarted;
+        private List<string> _activeDialogueLines = new List<string>();
+        private int _currentDialogueIndex = -1;
+        private string _dialogueSpeaker = "L.A.I.K.A. (AI)";
+
+        // Sleeping / Day end transition
+        private int _day = 1;
+        private bool _isSleeping = false;
+        private float _sleepTimer = 0f;
+        private bool _sleepTriggered = false;
+        private float _sleepFadeAlpha = 0f;
+        private string _morningNotificationText = "";
+        private float _morningNotificationTimer = 0f;
         
         // Alien Logic
         private List<Alien> _aliens = new List<Alien>();
@@ -341,27 +428,26 @@ namespace AntigravityMoon
         {
             switch (currentRepairStage)
             {
-                case 0: // Initial Repair - get the systems online
+                case 0:
                 case 1: // Stage 1 -> 2
                     return new Dictionary<string, int>
                     {
-                        { "Metal", 500 },
-                        { "Crystal", 500 },
-                        { "Rock", 500 }
+                        { "Crystal", 5 },
+                        { "Rock", 5 }
                     };
                 case 2: // Stage 2 -> 3
                     return new Dictionary<string, int>
                     {
-                        { "Metal", 10000 },
-                        { "Crystal", 10000 },
-                        { "Rock", 10000 }
+                        { "Metal", 3 },
+                        { "Crystal", 10 },
+                        { "Rock", 10 }
                     };
                 case 3: // Stage 3 -> 4 (Full Restoration)
                     return new Dictionary<string, int>
                     {
-                        { "Metal", 999999 },
-                        { "Crystal", 999999 },
-                        { "Rock", 999999 }
+                        { "Metal", 8 },
+                        { "Crystal", 15 },
+                        { "Rock", 20 }
                     };
                 default:
                     return null;
@@ -397,6 +483,86 @@ namespace AntigravityMoon
             KeyboardState currentKeyboardState = Keyboard.GetState();
             MouseState currentMouseState = Mouse.GetState();
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            // Update wake-up notification timer
+            if (_morningNotificationTimer > 0f)
+            {
+                _morningNotificationTimer -= dt;
+            }
+
+            if (_isSleeping)
+            {
+                _sleepTimer += dt;
+                if (_sleepTimer < 1.0f)
+                {
+                    _sleepFadeAlpha = _sleepTimer;
+                }
+                else if (_sleepTimer < 2.0f)
+                {
+                    _sleepFadeAlpha = 1.0f;
+                    if (!_sleepTriggered)
+                    {
+                        _sleepTriggered = true;
+                        
+                        // 1. Advance Day
+                        _day++;
+                        
+                        // 2. Restore stats
+                        _player.SleepRestore();
+                        
+                        // 3. Grow crops instantly
+                        foreach (var entity in _entityManager.GetEntities())
+                        {
+                            if (entity is Structure s && s.Type == "Greenhouse" && s.IsGrowing)
+                            {
+                                s.Update(1000f); // Grow fully
+                            }
+                        }
+                        
+                        // 4. Autosave
+                        SaveGame();
+                        
+                        // 5. Trigger dialogue or notification
+                        TriggerMorningDialogue();
+                        
+                        _morningNotificationText = $"DAY {_day} - MORNING\nSTATS RESTORED\nCROPS MATURED\nAUTO-SAVED";
+                        _morningNotificationTimer = 4.0f;
+                    }
+                }
+                else if (_sleepTimer < 3.0f)
+                {
+                    _sleepFadeAlpha = 3.0f - _sleepTimer;
+                }
+                else
+                {
+                    _isSleeping = false;
+                    _sleepTimer = 0f;
+                    _sleepFadeAlpha = 0f;
+                }
+                
+                _prevKeyboardState = currentKeyboardState;
+                _prevMouseState = currentMouseState;
+                base.Update(gameTime);
+                return;
+            }
+
+            if (_currentDialogueIndex >= 0)
+            {
+                if ((currentKeyboardState.IsKeyDown(Keys.Space) && !_prevKeyboardState.IsKeyDown(Keys.Space)) ||
+                    (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released))
+                {
+                    _currentDialogueIndex++;
+                    if (_currentDialogueIndex >= _activeDialogueLines.Count)
+                    {
+                        _activeDialogueLines.Clear();
+                        _currentDialogueIndex = -1;
+                    }
+                }
+                _prevKeyboardState = currentKeyboardState;
+                _prevMouseState = currentMouseState;
+                base.Update(gameTime);
+                return;
+            }
 
             // --- Camera Zoom (scroll wheel + Z/X keys) ---
             int currentScrollValue = currentMouseState.ScrollWheelValue;
@@ -535,6 +701,17 @@ namespace AntigravityMoon
                         
                         // Ensure player is at a spawn point below the ship
                         _player.Position = new Vector2(_spaceshipPosition.X + 192, _spaceshipPosition.Y + 180);
+
+                        // Trigger Intro Story Dialogues
+                        TriggerDialogue("L.A.I.K.A. (AI)", new List<string>
+                        {
+                            "System reboot complete... Hostile lunar environment detected.",
+                            "Commander, our landing thrusters failed during atmospheric entry.\nThe spaceship's systems are heavily damaged and offline.",
+                            "Oxygen levels are decaying. We must harvest local resources\nto survive, build a base, and repair our ship.",
+                            "Use your Antigravity Laser (Left Click) to harvest local\nRock and Crystal formations.",
+                            "Let's start by gathering 3 Rocks and constructing a Workbench.\nPress 'B' to open the Build Menu."
+                        });
+                        _currentStoryState = StoryState.WaitingForWorkbench;
                     }
                 }
             }
@@ -577,6 +754,110 @@ namespace AntigravityMoon
                 _prevMouseState = currentMouseState;
                 base.Update(gameTime);
                 return;
+            }
+
+            // --- Story Progression State Checks ---
+            if (_currentStoryState == StoryState.WaitingForWorkbench)
+            {
+                foreach (var entity in _entityManager.GetEntities())
+                {
+                    if (entity is Structure s && s.Type == "Workbench")
+                    {
+                        TriggerDialogue("L.A.I.K.A. (AI)", new List<string>
+                        {
+                            "Excellent! The Workbench is operational.",
+                            "Stand close to the Workbench and click it to open the crafting menu.",
+                            "From there, you can upgrade your Oxygen suit or construct a Backpack to carry more resources.",
+                            "Next, we should secure a food source. Gather 2 Rocks and 1 Crystal to build a Greenhouse."
+                        });
+                        _currentStoryState = StoryState.WaitingForGreenhouse;
+                        break;
+                    }
+                }
+            }
+            else if (_currentStoryState == StoryState.WaitingForGreenhouse)
+            {
+                foreach (var entity in _entityManager.GetEntities())
+                {
+                    if (entity is Structure s && s.Type == "Greenhouse")
+                    {
+                        TriggerDialogue("L.A.I.K.A. (AI)", new List<string>
+                        {
+                            "Greenhouse established! We can now cultivate lunar crops.",
+                            "Interact with the Greenhouse console to plant seeds. Planted crops will grow over time.",
+                            "Harvest ready crops to replenish your hunger levels. Don't let your hunger bar drop to zero!",
+                            "You can sleep in the Spaceship to pass the day, restore your stats, and grow crops instantly!",
+                            "Now, let's explore the lunar caves. Head to a cave entrance (marked by dark holes on the surface).",
+                            "Build Fences (cost: 1 rock) to protect your base structures from being overrun by cave mobs!"
+                        });
+                        _currentStoryState = StoryState.WaitingForCave;
+                        break;
+                    }
+                }
+            }
+            else if (_currentStoryState == StoryState.WaitingForCave)
+            {
+                if (_inTunnel)
+                {
+                    TriggerDialogue("L.A.I.K.A. (AI)", new List<string>
+                    {
+                        "Warning: Entering lava tube cavern.",
+                        "Scanners show underground mineral deposits, but they also detect hostile alien lifeforms.",
+                        "Aliens will attack on sight! Harvest crystals and Metal down here to build a Reactor to power our colony.",
+                        "Stand near the portal rope and press 'E' to return to the surface."
+                    });
+                    _currentStoryState = StoryState.WaitingForReactor;
+                }
+            }
+            else if (_currentStoryState == StoryState.WaitingForReactor)
+            {
+                foreach (var entity in _entityManager.GetEntities())
+                {
+                    if (entity is Structure s && s.Type == "Reactor")
+                    {
+                        TriggerDialogue("L.A.I.K.A. (AI)", new List<string>
+                        {
+                            "Reactor is online! The colony power grid is established.",
+                            "Now, we need to construct a Radar (40 Rocks, 40 Crystals) to transmit our location coordinates to Earth."
+                        });
+                        _currentStoryState = StoryState.WaitingForRadar;
+                        break;
+                    }
+                }
+            }
+            else if (_currentStoryState == StoryState.WaitingForRadar)
+            {
+                foreach (var entity in _entityManager.GetEntities())
+                {
+                    if (entity is Structure s && s.Type == "Radar")
+                    {
+                        TriggerDialogue("L.A.I.K.A. (AI)", new List<string>
+                        {
+                            "Radar established! Communications with Earth are now active.",
+                            "They have sent the blueprints for repairing the Spaceship core.",
+                            "Go to the Spaceship menu and contribute Rocks, Crystals, and Metal to begin Stage 1 repairs."
+                        });
+                        _currentStoryState = StoryState.WaitingForShipRepair;
+                        break;
+                    }
+                }
+            }
+            else if (_currentStoryState == StoryState.WaitingForShipRepair)
+            {
+                foreach (var entity in _entityManager.GetEntities())
+                {
+                    if (entity is Structure s && s.Type == "Spaceship" && s.RepairStage >= 4)
+                    {
+                        TriggerDialogue("L.A.I.K.A. (AI)", new List<string>
+                        {
+                            "Spaceship systems at 100%! Navigation computer online, fuel cells fully charged.",
+                            "We are ready to leave this orbit. Excellent work, Commander.",
+                            "Press ESC to exit to menu, or continue exploring the Antigravity Moon! Returning to Earth!"
+                        });
+                        _currentStoryState = StoryState.ShipRepairedDialogue;
+                        break;
+                    }
+                }
             }
 
             if (currentKeyboardState.IsKeyDown(Keys.I) && !_prevKeyboardState.IsKeyDown(Keys.I))
@@ -1066,16 +1347,18 @@ namespace AntigravityMoon
                     }
                     else if (_showSpaceshipMenu)
                     {
-                        // Menu Rect: Centered 350x350
+                        // Menu Rect: Centered 350x400
                         int spWidth = 350;
-                        int spHeight = 350;
+                        int spHeight = 400;
                         int spX = (GraphicsDevice.Viewport.Width - spWidth) / 2;
                         int spY = (GraphicsDevice.Viewport.Height - spHeight) / 2;
                         
                         // Refill Button
                         Rectangle refillBtn = new Rectangle(spX + 50, spY + 60, 250, 40);
+                        // Sleep Button
+                        Rectangle sleepBtn = new Rectangle(spX + 50, spY + 110, 250, 40);
                         // Upgrade Button
-                        Rectangle upgradeBtn = new Rectangle(spX + 50, spY + 140, 250, 40);
+                        Rectangle upgradeBtn = new Rectangle(spX + 50, spY + 160, 250, 40);
                         // Exit Button
                         Rectangle exitBtn = new Rectangle(spX + 300, spY + 10, 40, 40);
 
@@ -1089,6 +1372,15 @@ namespace AntigravityMoon
                                 _prevMouseState = currentMouseState;
                                 return;
                             }
+                        }
+                        else if (sleepBtn.Contains(mousePos) && !_showContributePopup)
+                        {
+                            _isSleeping = true;
+                            _sleepTimer = 0f;
+                            _sleepTriggered = false;
+                            _showSpaceshipMenu = false;
+                            _prevMouseState = currentMouseState;
+                            return;
                         }
                         else if (_interactedStructure != null && _interactedStructure.RepairStage < 4 && upgradeBtn.Contains(mousePos) && !_showContributePopup)
                         {
@@ -2262,7 +2554,7 @@ namespace AntigravityMoon
             if (_showSpaceshipMenu)
             {
                 int menuWidth = 350;
-                int menuHeight = 350;
+                int menuHeight = 400;
                 int menuX = (GraphicsDevice.Viewport.Width - menuWidth) / 2;
                 int menuY = (GraphicsDevice.Viewport.Height - menuHeight) / 2;
                 
@@ -2284,9 +2576,12 @@ namespace AntigravityMoon
                 Rectangle refillBtn = new Rectangle(menuX + 50, menuY + 60, 250, 40);
                 
                 _spriteBatch.Draw(_pixelTexture, refillBtn, refillBtnColor);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "REFILL OXYJIN", new Vector2(refillBtn.X + 40, refillBtn.Y + 10), Color.Black, 2);
-                Color refillCostColor = canAffordRefill ? Color.White : Color.Red;
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "COST: 2 ROCKS", new Vector2(menuX + 100, menuY + 105), refillCostColor, 2);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "REFILL OXYGEN (2 ROCK)", new Vector2(refillBtn.X + 15, refillBtn.Y + 12), Color.Black, 1.5f);
+                
+                // Sleep Button
+                Rectangle sleepBtn = new Rectangle(menuX + 50, menuY + 110, 250, 40);
+                _spriteBatch.Draw(_pixelTexture, sleepBtn, Color.CornflowerBlue);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "REST / END DAY", new Vector2(sleepBtn.X + 50, sleepBtn.Y + 12), Color.Black, 1.5f);
                 
                 // Upgrade Section
                 if (_interactedStructure != null)
@@ -2296,8 +2591,8 @@ namespace AntigravityMoon
                     if (stage >= 4)
                     {
                         // Fully repaired!
-                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "SHIP FULLY RESTORED!", new Vector2(menuX + 50, menuY + 150), Color.Cyan, 2);
-                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "READY FOR LAUNCH", new Vector2(menuX + 70, menuY + 180), Color.LimeGreen, 2);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "SHIP FULLY RESTORED!", new Vector2(menuX + 50, menuY + 180), Color.Cyan, 2);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "READY FOR LAUNCH", new Vector2(menuX + 70, menuY + 210), Color.LimeGreen, 2);
                     }
                     else
                     {
@@ -2318,15 +2613,15 @@ namespace AntigravityMoon
                             }
                         }
                         
-                        Rectangle upgradeBtn = new Rectangle(menuX + 50, menuY + 140, 250, 40);
+                        Rectangle upgradeBtn = new Rectangle(menuX + 50, menuY + 160, 250, 40);
                         _spriteBatch.Draw(_pixelTexture, upgradeBtn, hasAnythingToGive ? Color.Green : Color.Gray);
-                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "CONTRIBUTE", new Vector2(upgradeBtn.X + 50, upgradeBtn.Y + 10), Color.Black, 2);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "CONTRIBUTE", new Vector2(upgradeBtn.X + 70, upgradeBtn.Y + 12), Color.Black, 1.8f);
                         
                         // Stage name
-                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, stageName, new Vector2(menuX + 80, menuY + 130), Color.White, 1);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, stageName, new Vector2(menuX + 80, menuY + 210), Color.White, 1);
                         
                         // Draw costs with contributed/needed and progress bars
-                        int costY = menuY + 195;
+                        int costY = menuY + 235;
                         if (costs != null)
                         {
                             foreach (var cost in costs)
@@ -2335,7 +2630,7 @@ namespace AntigravityMoon
                                 bool fulfilled = contributed >= cost.Value;
                                 Color costColor = fulfilled ? Color.LimeGreen : Color.Orange;
                                 string costStr = $"{cost.Key.ToUpper()}: {contributed}/{cost.Value}";
-                                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, costStr, new Vector2(menuX + 60, costY -10), costColor, 2);
+                                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, costStr, new Vector2(menuX + 60, costY - 10), costColor, 2);
                                 
                                 // Progress bar
                                 int barWidth = 220;
@@ -2350,7 +2645,7 @@ namespace AntigravityMoon
                         
                         // Stage indicator
                         string progressStr = $"STAGE {stage}/4";
-                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, progressStr, new Vector2(menuX + 120, menuY + menuHeight - 40), Color.Yellow, 2);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, progressStr, new Vector2(menuX + 120, menuY + menuHeight - 30), Color.Yellow, 2);
                     }
                 }
             }
@@ -2545,6 +2840,97 @@ namespace AntigravityMoon
                 PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, msg, msgPos, Color.Red, (int)scale);
             }
 
+            // Draw Objective HUD
+            if (_currentStoryState != StoryState.NotStarted)
+            {
+                int hudW = 420;
+                int hudH = 70;
+                int hudX = GraphicsDevice.Viewport.Width - hudW - 20;
+                int hudY = 20;
+
+                if (_showMinimap)
+                {
+                    int mScale = _minimapSize == 1 ? MinimapScaleSmall : MinimapScaleLarge;
+                    int mMapRange = 30;
+                    int mMapHeight = mMapRange * 2 * mScale;
+                    hudY = 20 + mMapHeight + 20; // 20px gap below map
+                }
+                
+                // Dark background
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(hudX, hudY, hudW, hudH), Color.Black * 0.6f);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(hudX, hudY, 4, hudH), Color.Yellow); // Left stripe
+                
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "CURRENT MISSION", new Vector2(hudX + 15, hudY + 10), Color.Yellow, 1.8f);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"DAY {_day}", new Vector2(hudX + hudW - 100, hudY + 10), Color.Cyan, 1.8f);
+                
+                string objText = "";
+                switch (_currentStoryState)
+                {
+                    case StoryState.WaitingForWorkbench:
+                        objText = "Gather 3 Rocks and build a Workbench (Press B).";
+                        break;
+                    case StoryState.WaitingForGreenhouse:
+                        objText = "Gather 2 Rocks & 1 Crystal; construct a Greenhouse.";
+                        break;
+                    case StoryState.WaitingForCave:
+                        objText = "Locate cave entrance & press E to explore caves.";
+                        break;
+                    case StoryState.WaitingForReactor:
+                        objText = "Gather 50 Rocks, 30 Crystals; construct a Reactor.";
+                        break;
+                    case StoryState.WaitingForRadar:
+                        objText = "Gather 40 Rocks, 40 Crystals; construct a Radar.";
+                        break;
+                    case StoryState.WaitingForShipRepair:
+                        // Get spaceship repair stage
+                        int stage = 1;
+                        foreach (var entity in _entityManager.GetEntities())
+                        {
+                            if (entity is Structure s && s.Type == "Spaceship")
+                            {
+                                stage = s.RepairStage;
+                                break;
+                            }
+                        }
+                        objText = $"Repair Spaceship core (Stage {stage}/4).";
+                        break;
+                    case StoryState.ShipRepairedDialogue:
+                        objText = "Spaceship restored! Press ESC to return to Earth.";
+                        break;
+                }
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, objText, new Vector2(hudX + 15, hudY + 40), Color.White, 1.2f);
+            }
+
+            // Draw Dialogue Box
+            if (_currentDialogueIndex >= 0 && _currentDialogueIndex < _activeDialogueLines.Count)
+            {
+                int dbX = 100;
+                int dbY = GraphicsDevice.Viewport.Height - 160;
+                int dbWidth = GraphicsDevice.Viewport.Width - 200;
+                int dbHeight = 130;
+                
+                // Outer border (Cyan)
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(dbX - 4, dbY - 4, dbWidth + 8, dbHeight + 8), Color.Cyan);
+                // Inside background (Black)
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(dbX, dbY, dbWidth, dbHeight), Color.Black);
+                
+                // Speaker Title
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(dbX + 10, dbY - 35, 240, 35), Color.Cyan);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, _dialogueSpeaker, new Vector2(dbX + 20, dbY - 28), Color.Black, 2.0f);
+                
+                // Text Line (splits newlines dynamically)
+                string currentLine = _activeDialogueLines[_currentDialogueIndex];
+                string[] splitLines = currentLine.Split('\n');
+                for (int sIdx = 0; sIdx < splitLines.Length; sIdx++)
+                {
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, splitLines[sIdx], new Vector2(dbX + 30, dbY + 20 + sIdx * 35), Color.White, 2.2f);
+                }
+                
+                // Bottom indicator
+                float pulse = 0.7f + (float)Math.Sin(gameTime.TotalGameTime.TotalSeconds * 5) * 0.3f;
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "[ PRESS SPACE TO CONTINUE ]", new Vector2(dbX + dbWidth - 240, dbY + dbHeight - 25), Color.Yellow * pulse, 1.5f);
+            }
+
             _spriteBatch.End();
             }
 
@@ -2697,6 +3083,41 @@ namespace AntigravityMoon
                     _spriteBatch.Draw(_floppyIcon, saveBtnRect, Color.White);
                 }
             }
+
+            // Draw Waking Alert Notification
+            if (_morningNotificationTimer > 0f && !_isSleeping && _currentDialogueIndex < 0)
+            {
+                int notifW = 400;
+                int notifH = 100;
+                int notifX = (GraphicsDevice.Viewport.Width - notifW) / 2;
+                int notifY = 100;
+                
+                // Draw background panel
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(notifX, notifY, notifW, notifH), Color.Black * 0.75f);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(notifX, notifY, notifW, 4), Color.Cyan); // top stripe
+                
+                // Split multi-line notification text
+                string[] lines = _morningNotificationText.Split('\n');
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, lines[i], new Vector2(notifX + 20, notifY + 15 + i * 20), Color.White, 1.2f);
+                }
+            }
+
+            // Draw Sleep Fade Overlay
+            if (_sleepFadeAlpha > 0f)
+            {
+                _spriteBatch.Draw(_pixelTexture, GraphicsDevice.Viewport.Bounds, Color.Black * _sleepFadeAlpha);
+                
+                if (_sleepFadeAlpha >= 0.9f)
+                {
+                    string sleepStr = "SLEEPING...";
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, sleepStr, 
+                        new Vector2(GraphicsDevice.Viewport.Width / 2 - 80, GraphicsDevice.Viewport.Height / 2 - 15), 
+                        Color.White, 3f);
+                }
+            }
+
             _spriteBatch.End();
             
             base.Draw(gameTime);
@@ -2718,6 +3139,8 @@ namespace AntigravityMoon
             data.Hunger = _player.Hunger;
             data.BackpackLevel = _player.Inventory.UpgradeLevel;
             data.SuitLevel = _player.SuitLevel;
+            data.StoryState = (int)_currentStoryState;
+            data.Day = _day;
             
             // Inventory
             for (int y = 0; y < _player.Inventory.Rows; y++)
@@ -2795,6 +3218,8 @@ namespace AntigravityMoon
                 _player.Oxygen = data.Oxygen;
                 _player.Hunger = data.Hunger;
                 _player.SuitLevel = data.SuitLevel > 0 ? data.SuitLevel : 1;
+                _currentStoryState = (StoryState)data.StoryState;
+                _day = data.Day > 0 ? data.Day : 1;
                 _player.Inventory.Clear();
                 
                 // Snap Camera
