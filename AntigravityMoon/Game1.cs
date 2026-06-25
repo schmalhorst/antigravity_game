@@ -121,6 +121,8 @@ namespace AntigravityMoon
             LoadTexture("World", "floppy");
             LoadTexture("Structures", "hab");
             LoadTexture("Structures", "machinery");
+            LoadTexture("Structures", "fence");
+            LoadTexture("Structures", "fence_vertical");
 
             _textures["backpack"] = Content.Load<Texture2D>("Images/World/backpack");
             _textures["skull_crossbones"] = Content.Load<Texture2D>("Images/World/skull_crossbones");
@@ -194,7 +196,27 @@ namespace AntigravityMoon
             {
                 using (var stream = File.OpenRead(path))
                 {
-                    _textures[name] = Texture2D.FromStream(GraphicsDevice, stream);
+                    var tex = Texture2D.FromStream(GraphicsDevice, stream);
+                    
+                    // Apply ColorKey (Magenta: 255, 0, 255)
+                    Color[] data = new Color[tex.Width * tex.Height];
+                    tex.GetData(data);
+                    bool modified = false;
+                    for (int i = 0; i < data.Length; i++)
+                    {
+                        // Check for exact magenta
+                        if (data[i].R == 255 && data[i].G == 0 && data[i].B == 255)
+                        {
+                            data[i] = Color.Transparent;
+                            modified = true;
+                        }
+                    }
+                    if (modified)
+                    {
+                        tex.SetData(data);
+                    }
+                    
+                    _textures[name] = tex;
                 }
             }
             else
@@ -1387,7 +1409,7 @@ namespace AntigravityMoon
             // Update Aliens
                 for (int i = _aliens.Count - 1; i >= 0; i--)
                 {
-                    _aliens[i].Update(dt, _player);
+                    _aliens[i].Update(dt, _player, _entityManager);
                     if (_aliens[i].IsDead)
                     {
                         // Spawn Electricity Particles
@@ -1475,12 +1497,12 @@ namespace AntigravityMoon
                     if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
                     {
                         int menuWidth = 60;
-                        int menuHeight = 9 * 50 + 10 * 5; // 8 Buildings + 1 Edit
+                        int menuHeight = 10 * 50 + 11 * 5; // 9 Buildings + 1 Edit
                         int menuX = 10;
                         int menuY = (GraphicsDevice.Viewport.Height - menuHeight) / 2;
                         
                         // Check Slots
-                        for (int i = 0; i < 9; i++)
+                        for (int i = 0; i < 10; i++)
                         {
                             Rectangle slotRect = new Rectangle(menuX + 5, menuY + 5 + i * 55, 50, 50);
                             if (slotRect.Contains(currentMouseState.Position))
@@ -1494,8 +1516,9 @@ namespace AntigravityMoon
                                 else if (i == 5) structure = "Machinery";
                                 else if (i == 6) structure = "Radar";
                                 else if (i == 7) structure = "WormHole"; // Case sensitive? User said WormHoles/WormHole, let's use "WormHole"
+                                else if (i == 8) structure = "Fence";
                                 
-                                if (i == 8) // Edit Button
+                                if (i == 9) // Edit Button
                                 {
                                     if (_buildModeState == BuildModeState.Menu) _buildModeState = BuildModeState.Editing;
                                     else _buildModeState = BuildModeState.Menu;
@@ -1510,7 +1533,7 @@ namespace AntigravityMoon
                                     bool canBuild = false;
                                     int rock = _player.Inventory.CountItem("Rock");
                                     int crys = _player.Inventory.CountItem("Crystal");
-
+ 
                                     if (structure == "Greenhouse") canBuild = rock >= 2 && crys >= 1;
                                     else if (structure == "Workbench") canBuild = rock >= 3;
                                     else if (structure == "Reactor") canBuild = rock >= 50 && crys >= 30;
@@ -1519,7 +1542,8 @@ namespace AntigravityMoon
                                     else if (structure == "Machinery") canBuild = rock >= 80 && crys >= 40;
                                     else if (structure == "Radar") canBuild = rock >= 40 && crys >= 40;
                                     else if (structure == "WormHole") canBuild = rock >= 100 && crys >= 100;
-
+                                    else if (structure == "Fence") canBuild = rock >= 1;
+ 
                                     if (canBuild)
                                     {
                                         _selectedBuildStructure = structure;
@@ -2122,14 +2146,14 @@ namespace AntigravityMoon
             {
                 // Draw Menu Background (Left Side Vertical)
                 int menuWidth = 60;
-                int menuHeight = 9 * 50 + 10 * 5; // 9 slots
+                int menuHeight = 10 * 50 + 11 * 5; // 10 slots
                 int menuX = 10;
                 int menuY = (GraphicsDevice.Viewport.Height - menuHeight) / 2;
                 
                 _spriteBatch.Draw(_pixelTexture, new Rectangle(menuX, menuY, menuWidth, menuHeight), Color.DarkGray);
 
                 // Draw Slots
-                for (int i = 0; i < 9; i++)
+                for (int i = 0; i < 10; i++)
                 {
                     Rectangle slotRect = new Rectangle(menuX + 5, menuY + 5 + i * 55, 50, 50);
                     
@@ -2199,7 +2223,14 @@ namespace AntigravityMoon
                         costText = "100 R, 100 C";
                         if (_textures.ContainsKey("wormhole")) _spriteBatch.Draw(_textures["wormhole"], slotRect, canBuild ? Color.White : Color.Gray * 0.5f);
                     }
-                    else if (i == 8) // Edit Button
+                    else if (i == 8) // Fence
+                    {
+                        // Cost: 1 Rock
+                        canBuild = _player.Inventory.CountItem("Rock") >= 1;
+                        costText = "1 ROCK";
+                        if (_textures.ContainsKey("fence")) _spriteBatch.Draw(_textures["fence"], slotRect, canBuild ? Color.White : Color.Gray * 0.5f);
+                    }
+                    else if (i == 9) // Edit Button
                     {
                         _spriteBatch.Draw(_pixelTexture, slotRect, _buildModeState == BuildModeState.Editing ? Color.Green : Color.Blue);
                         string btnText = _buildModeState == BuildModeState.Editing ? "OK" : "EDIT"; // Short text for vertical
@@ -2718,7 +2749,8 @@ namespace AntigravityMoon
                         X = s.Position.X,
                         Y = s.Position.Y,
                         RepairStage = s.RepairStage,
-                        ContributedMaterials = s.ContributedMaterials.Count > 0 ? new Dictionary<string, int>(s.ContributedMaterials) : null
+                        ContributedMaterials = s.ContributedMaterials.Count > 0 ? new Dictionary<string, int>(s.ContributedMaterials) : null,
+                        Rotation = s.Rotation
                     });
                 }
             }
@@ -2818,11 +2850,12 @@ namespace AntigravityMoon
                         Structure s = new Structure(new Vector2(currentData.X, currentData.Y), currentData.Type, 80, 80);
                         
                         // Set specific sizes
-                        if (currentData.Type == "Workbench") { s.Width = 40; s.Height = 40; }
+                        if (currentData.Type == "Workbench" || currentData.Type == "Fence") { s.Width = 40; s.Height = 40; }
                         else if (currentData.Type == "HAB") { s.Width = 80; s.Height = 80; }
                         else if (currentData.Type == "Machinery") { s.Width = 160; s.Height = 160; }
                         else if (currentData.Type == "Spaceship") { s.Width = 384; s.Height = 168; } // Ensure Size
                         
+                        s.Rotation = currentData.Rotation;
                         s.RepairStage = currentData.RepairStage;
                         if (currentData.ContributedMaterials != null)
                         {

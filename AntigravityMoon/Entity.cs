@@ -10,6 +10,7 @@ namespace AntigravityMoon
         public bool IsMovable { get; set; }
         public bool IsHarvestable { get; set; }
         public bool IsSolid { get; set; }
+        public float Rotation { get; set; } = 0f;
 
         public Entity(Vector2 position, string type, bool movable, bool harvestable, bool solid = false)
         {
@@ -28,7 +29,24 @@ namespace AntigravityMoon
         public virtual void Draw(SpriteBatch spriteBatch, Texture2D texture, Vector2 mouseWorldPos)
         {
             Rectangle bounds = GetBounds();
-            spriteBatch.Draw(texture, bounds, Color.White);
+            if (Rotation != 0f)
+            {
+                Vector2 center = new Vector2(Position.X + 16f, Position.Y + 16f); // Entity default size is 32x32
+                spriteBatch.Draw(
+                    texture,
+                    new Rectangle((int)center.X, (int)center.Y, 32, 32),
+                    null,
+                    Color.White,
+                    Rotation,
+                    new Vector2(texture.Width / 2f, texture.Height / 2f),
+                    SpriteEffects.None,
+                    0f
+                );
+            }
+            else
+            {
+                spriteBatch.Draw(texture, bounds, Color.White);
+            }
             
             // Draw Label only if hovering
             if (bounds.Contains(mouseWorldPos))

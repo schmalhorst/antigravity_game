@@ -39,6 +39,7 @@ namespace AntigravityMoon
             public float Y { get; set; }
             public int RepairStage { get; set; }
             public Dictionary<string, int> ContributedMaterials { get; set; }
+            public float Rotation { get; set; }
         }
     }
 }

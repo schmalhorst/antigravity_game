@@ -30,6 +30,8 @@ namespace AntigravityMoon
         private bool _prevBuildKeyPressed = false;
         private Vector2 _currentMouseWorldPos;
         private MouseState _prevMouseState;
+        private float _currentPlacementRotation = 0f;
+        private KeyboardState _prevKeyboardState;
 
         public float Hunger { get; set; } = 100f;
         public float Health { get; private set; } = 100f;
@@ -73,6 +75,7 @@ namespace AntigravityMoon
             _heldEntity = null;
             _prevBuildKeyPressed = true; // Prevent immediate placement from menu click
             JustPlacedStructure = false;
+            _currentPlacementRotation = 0f;
         }
 
         public void StartMoving(Structure structure)
@@ -210,6 +213,18 @@ namespace AntigravityMoon
 
             if (allowInput)
             {
+                if (kstate.IsKeyDown(Keys.R) && !_prevKeyboardState.IsKeyDown(Keys.R))
+                {
+                    if (IsPlacing)
+                    {
+                        _currentPlacementRotation = (_currentPlacementRotation + (float)(Math.PI / 2)) % (float)(Math.PI * 2);
+                    }
+                    else if (_movingStructure != null)
+                    {
+                        _movingStructure.Rotation = (_movingStructure.Rotation + (float)(Math.PI / 2)) % (float)(Math.PI * 2);
+                    }
+                }
+
                 if (IsPlacing)
                 {
                     HandlePlacement(mstate, entityManager, mousePos);
@@ -226,6 +241,7 @@ namespace AntigravityMoon
             }
             
             _prevMouseState = mstate;
+            _prevKeyboardState = kstate;
 
             // Oxygen Decay (Always)
             float currentOxygenDecayRate = _oxygenDecayRate * (1.0f - (GetTotalOxygenBuff() / 100f));
@@ -249,7 +265,7 @@ namespace AntigravityMoon
                 Vector2 pos = new Vector2(x, y);
 
                 int placeW = 80; int placeH = 80;
-                if (_structureToPlace == "Workbench") { placeW = 40; placeH = 40; }
+                if (_structureToPlace == "Workbench" || _structureToPlace == "Fence") { placeW = 40; placeH = 40; }
                 else if (_structureToPlace == "HAB") { placeW = 80; placeH = 80; }
                 else if (_structureToPlace == "Machinery") { placeW = 160; placeH = 160; }
                 Rectangle buildRect = new Rectangle((int)pos.X, (int)pos.Y, placeW, placeH);
@@ -342,16 +358,27 @@ namespace AntigravityMoon
                             canBuild = true;
                         }
                     }
+                    else if (_structureToPlace == "Fence")
+                    {
+                        // Cost: 1 Rock
+                        if (Inventory.CountItem("Rock") >= 1)
+                        {
+                            Inventory.RemoveItems("Rock", 1);
+                            canBuild = true;
+                        }
+                    }
 
                     if (canBuild)
                     {
                         int w = 80; // Default building size (+25% from 64)
                         int h = 80;
-                        if (_structureToPlace == "Workbench") { w = 40; h = 40; }
+                        if (_structureToPlace == "Workbench" || _structureToPlace == "Fence") { w = 40; h = 40; }
                         else if (_structureToPlace == "HAB") { w = 80; h = 80; }
                         else if (_structureToPlace == "Machinery") { w = 160; h = 160; }
 
-                        entityManager.AddEntity(new Structure(pos, _structureToPlace, w, h));
+                        var newStructure = new Structure(pos, _structureToPlace, w, h);
+                        newStructure.Rotation = _currentPlacementRotation;
+                        entityManager.AddEntity(newStructure);
                         IsPlacing = false; // Finish placing
                     }
                 }
@@ -430,7 +457,7 @@ namespace AntigravityMoon
                 
                 int w = 64;
                 int h = 64;
-                if (structureType == "Workbench") { w = 32; h = 32; }
+                if (structureType == "Workbench" || structureType == "Fence") { w = 32; h = 32; }
 
                 Texture2D ghostTexture = playerTexture; // Fallback
                 string key = structureType.ToLower().Replace(" ", "_");
@@ -439,18 +466,50 @@ namespace AntigravityMoon
                     ghostTexture = textures[key];
                 }
 
+                float rot = IsPlacing ? _currentPlacementRotation : _movingStructure.Rotation;
+                float drawRot = rot;
+                if (structureType == "Fence")
+                {
+                    drawRot = 0f;
+                    if (System.Math.Abs(rot - (float)System.Math.PI / 2) < 0.01f || System.Math.Abs(rot - 3 * (float)System.Math.PI / 2) < 0.01f)
+                    {
+                        if (textures != null && textures.ContainsKey("fence_vertical"))
+                        {
+                            ghostTexture = textures["fence_vertical"];
+                        }
+                    }
+                }
+
+                Vector2 center = new Vector2(x + w / 2f, y + h / 2f);
+
                 if (_movingStructure != null)
                 {
                      // Draw glow outline for moving structure
                      float pulse = 1.0f + (float)Math.Sin(DateTime.Now.TimeOfDay.TotalSeconds * 6) * 0.2f;
                      Color glowColor = Color.DeepSkyBlue * pulse;
 
-                     // Need a generic pixel texture for outline... Wait, Player doesn't have pixel texture reference natively right now.
-                     // I will just use the ghostTexture itself but scaled out slightly.
-                     spriteBatch.Draw(ghostTexture, new Rectangle(x - 4, y - 4, w + 8, h + 8), glowColor * 0.5f);
+                     spriteBatch.Draw(
+                         ghostTexture,
+                         new Rectangle((int)center.X, (int)center.Y, w + 8, h + 8),
+                         null,
+                         glowColor * 0.5f,
+                         drawRot,
+                         new Vector2(ghostTexture.Width / 2f, ghostTexture.Height / 2f),
+                         SpriteEffects.None,
+                         0f
+                     );
                 }
 
-                spriteBatch.Draw(ghostTexture, new Rectangle(x, y, w, h), Color.White * 0.5f);
+                spriteBatch.Draw(
+                    ghostTexture,
+                    new Rectangle((int)center.X, (int)center.Y, w, h),
+                    null,
+                    Color.White * 0.5f,
+                    drawRot,
+                    new Vector2(ghostTexture.Width / 2f, ghostTexture.Height / 2f),
+                    SpriteEffects.None,
+                    0f
+                );
             }
         }
         public void Eat(float amount)

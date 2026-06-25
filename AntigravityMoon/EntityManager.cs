@@ -55,12 +55,22 @@ namespace AntigravityMoon
                 }
 
                 string key = entity.Type.ToLower().Replace(" ", "_");
-                if (entity is Structure s && key == "spaceship")
+                if (entity is Structure s)
                 {
-                    if (s.RepairStage <= 1) key = "spaceship_broken1";
-                    else if (s.RepairStage == 2) key = "spaceship_broken2";
-                    else if (s.RepairStage == 3) key = "spaceship_broken3";
-                    else key = "spaceship";
+                    if (key == "spaceship")
+                    {
+                        if (s.RepairStage <= 1) key = "spaceship_broken1";
+                        else if (s.RepairStage == 2) key = "spaceship_broken2";
+                        else if (s.RepairStage == 3) key = "spaceship_broken3";
+                        else key = "spaceship";
+                    }
+                    else if (key == "fence")
+                    {
+                        if (System.Math.Abs(s.Rotation - (float)System.Math.PI / 2) < 0.01f || System.Math.Abs(s.Rotation - 3 * (float)System.Math.PI / 2) < 0.01f)
+                        {
+                            key = "fence_vertical";
+                        }
+                    }
                 }
 
                 if (textures != null && textures.ContainsKey(key))

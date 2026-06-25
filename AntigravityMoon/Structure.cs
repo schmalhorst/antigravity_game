@@ -131,7 +131,24 @@ namespace AntigravityMoon
             // if (Type == "Greenhouse") color = Color.LimeGreen; // Removed tint
             // else if (Type == "Workbench") color = Color.Brown; // Removed tint
 
-            spriteBatch.Draw(texture, bounds, color);
+            if (Rotation != 0f && Type != "Fence")
+            {
+                Vector2 center = new Vector2(Position.X + Width / 2f, Position.Y + Height / 2f);
+                spriteBatch.Draw(
+                    texture,
+                    new Rectangle((int)center.X, (int)center.Y, Width, Height),
+                    null,
+                    color,
+                    Rotation,
+                    new Vector2(texture.Width / 2f, texture.Height / 2f),
+                    SpriteEffects.None,
+                    0f
+                );
+            }
+            else
+            {
+                spriteBatch.Draw(texture, bounds, color);
+            }
             
             // Draw Label only if hovering
             if (bounds.Contains(mouseWorldPos) && !string.IsNullOrEmpty(Type))

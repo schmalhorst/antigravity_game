@@ -30,7 +30,7 @@ namespace AntigravityMoon
             }
         }
 
-        public void Update(float dt, Player player)
+        public void Update(float dt, Player player, EntityManager entityManager)
         {
             if (IsDead) return;
 
@@ -39,7 +39,66 @@ namespace AntigravityMoon
             if (direction != Vector2.Zero)
             {
                 direction.Normalize();
-                Position += direction * Speed * dt;
+                Vector2 nextPosition = Position + direction * Speed * dt;
+
+                // Check collision for this new position
+                Rectangle alienRect = new Rectangle((int)nextPosition.X, (int)nextPosition.Y, Width, Height);
+                bool collision = false;
+
+                foreach (var entity in entityManager.GetEntities())
+                {
+                    if (entity.IsSolid)
+                    {
+                        if (alienRect.Intersects(entity.GetBounds()))
+                        {
+                            collision = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!collision)
+                {
+                    Position = nextPosition;
+                }
+                else
+                {
+                    // Sliding collision: try moving only in X
+                    Vector2 nextPosX = new Vector2(Position.X + direction.X * Speed * dt, Position.Y);
+                    Rectangle rectX = new Rectangle((int)nextPosX.X, (int)nextPosX.Y, Width, Height);
+                    bool colX = false;
+                    foreach (var entity in entityManager.GetEntities())
+                    {
+                        if (entity.IsSolid && rectX.Intersects(entity.GetBounds()))
+                        {
+                            colX = true;
+                            break;
+                        }
+                    }
+                    if (!colX && direction.X != 0)
+                    {
+                        Position = nextPosX;
+                    }
+                    else
+                    {
+                        // Try Y movement only
+                        Vector2 nextPosY = new Vector2(Position.X, Position.Y + direction.Y * Speed * dt);
+                        Rectangle rectY = new Rectangle((int)nextPosY.X, (int)nextPosY.Y, Width, Height);
+                        bool colY = false;
+                        foreach (var entity in entityManager.GetEntities())
+                        {
+                            if (entity.IsSolid && rectY.Intersects(entity.GetBounds()))
+                            {
+                                colY = true;
+                                break;
+                            }
+                        }
+                        if (!colY && direction.Y != 0)
+                        {
+                            Position = nextPosY;
+                        }
+                    }
+                }
             }
 
             // Cooldown Management
