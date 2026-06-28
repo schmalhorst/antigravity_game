@@ -19,6 +19,7 @@ namespace AntigravityMoon
         public Vector2 Position { get; set; }
         public Inventory Inventory { get; private set; }
         private float _speed = 200f;
+        private Vector2 _velocity = Vector2.Zero;
         private Entity _heldEntity; // For antigravity tool
         
         public event Action OnInventoryFull;
@@ -98,7 +99,7 @@ namespace AntigravityMoon
                  int y = ((int)_currentMouseWorldPos.Y / 40) * 40;
                  _movingStructure.Position = new Vector2(x, y);
                  _movingStructure = null;
-            }
+             }
         }
 
         public void Update(GameTime gameTime, EntityManager entityManager, Camera camera, TileMap tileMap, bool allowInput)
@@ -107,6 +108,11 @@ namespace AntigravityMoon
             var kstate = Keyboard.GetState();
             var mstate = Mouse.GetState();
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            // Determine biome based on Y coordinate
+            bool inIceCaves = Position.Y < -1_500_000 && Position.Y > -2_500_000;
+            bool inVolcanicCaves = Position.Y < -2_500_000 && Position.Y > -3_500_000;
+            bool inRadioactiveCaves = Position.Y < -3_500_000;
 
             // Buff Tick
             for (int i = _activeBuffs.Count - 1; i >= 0; i--)
@@ -118,17 +124,47 @@ namespace AntigravityMoon
                 }
             }
 
-            // Movement
+            // Movement input
             Vector2 movement = Vector2.Zero;
             if (kstate.IsKeyDown(Keys.W)) movement.Y -= 1;
             if (kstate.IsKeyDown(Keys.S)) movement.Y += 1;
             if (kstate.IsKeyDown(Keys.A)) movement.X -= 1;
             if (kstate.IsKeyDown(Keys.D)) movement.X += 1;
 
+            Vector2 targetVelocity = Vector2.Zero;
             if (movement != Vector2.Zero)
             {
-                // Hunger Decay (Only when moving)
+                movement.Normalize();
+                targetVelocity = movement * _speed;
+            }
+
+            if (inIceCaves)
+            {
+                // Slippery slide movement physics
+                float accelRate = (movement != Vector2.Zero) ? 300f : 150f;
+                if (_velocity.X < targetVelocity.X) _velocity.X = Math.Min(_velocity.X + accelRate * dt, targetVelocity.X);
+                else if (_velocity.X > targetVelocity.X) _velocity.X = Math.Max(_velocity.X - accelRate * dt, targetVelocity.X);
+
+                if (_velocity.Y < targetVelocity.Y) _velocity.Y = Math.Min(_velocity.Y + accelRate * dt, targetVelocity.Y);
+                else if (_velocity.Y > targetVelocity.Y) _velocity.Y = Math.Max(_velocity.Y - accelRate * dt, targetVelocity.Y);
+            }
+            else
+            {
+                _velocity = targetVelocity;
+            }
+
+            // Decays & Hazards Check
+            bool hasHeatShield = Inventory.CountItem("Heat Shield") > 0;
+            bool hasRadShield = Inventory.CountItem("Rad Shield") > 0;
+
+            // Hunger Decay (Volcanic heat accelerates it, carrying Heat Shield negates it)
+            if (movement != Vector2.Zero || (inVolcanicCaves && !hasHeatShield))
+            {
                 float currentHungerDecayRate = _hungerDecayRate * (1.0f - (GetTotalHungerBuff() / 100f));
+                if (inVolcanicCaves && !hasHeatShield)
+                {
+                    currentHungerDecayRate *= 3f;
+                }
                 Hunger -= currentHungerDecayRate * dt;
                 if (Hunger <= 0)
                 {
@@ -136,36 +172,34 @@ namespace AntigravityMoon
                     LastDeathCause = DeathCause.Hunger;
                     Die();
                 }
+            }
 
-                // Oxygen Decay (Always, or maybe just when moving? Let's do always for now, but inside Update loop it's only when moving... wait. 
-                // Original code had hunger decay inside "if (movement != Vector2.Zero)". 
-                // Oxygen should probably decay always. Let's move it outside the movement check.
-                // But for now, to minimize diff, let's keep it here or move it.
-                // The prompt says "Modify Player.cs to add Oxygen property and decay".
-                // I should probably move both out, but let's stick to the pattern. 
-                // Actually, oxygen should decay even if standing still.
-                // I will move it outside the movement check in a separate edit if needed, or just add it here for now if that's the pattern.
-                // The current code structure has hunger decay inside the movement check.
-                // Let's look at the file content again.
-                // Lines 84: if (movement != Vector2.Zero)
-                // Lines 86-92: Hunger decay.
-                // I should probably move hunger decay out too, but I shouldn't change existing behavior unless asked.
-                // However, oxygen definitely decays always.
-                // So I will add Oxygen decay outside the movement check.
-                
-                movement.Normalize();
-                Vector2 nextPos = Position + movement * _speed * dt;
-                
-                // Collision Detection
+            // Radioactive Damage (carrying Rad Shield negates it)
+            if (inRadioactiveCaves && !hasRadShield)
+            {
+                TakeDamage(5f * dt);
+            }
+
+            // Lava Tile Check (Standing on tile 7 deals 15% damage/sec)
+            int centerTileX = (int)Math.Floor((Position.X + 20) / TileMap.TileSize);
+            int centerTileY = (int)Math.Floor((Position.Y + 20) / TileMap.TileSize);
+            if (tileMap.GetTile(centerTileX, centerTileY) == 7)
+            {
+                TakeDamage(15f * dt);
+            }
+
+            // Process movement & collision
+            if (_velocity != Vector2.Zero)
+            {
+                Vector2 nextPos = Position + _velocity * dt;
                 bool collision = false;
                 Rectangle playerRect = new Rectangle((int)nextPos.X, (int)nextPos.Y, 40, 40);
-                // Check for crater tiles (type 2) using proper rectangle intersection
-                // Player is 40x40, tiles are 48x48
+
                 int minTileX = (int)Math.Floor(nextPos.X / TileMap.TileSize);
                 int maxTileX = (int)Math.Floor((nextPos.X + 39) / TileMap.TileSize);
                 int minTileY = (int)Math.Floor(nextPos.Y / TileMap.TileSize);
                 int maxTileY = (int)Math.Floor((nextPos.Y + 39) / TileMap.TileSize);
-                
+
                 for (int tx = minTileX; tx <= maxTileX && !collision; tx++)
                 {
                     for (int ty = minTileY; ty <= maxTileY && !collision; ty++)
@@ -173,7 +207,6 @@ namespace AntigravityMoon
                         int tileType = tileMap.GetTile(tx, ty);
                         if (tileType == 2 || tileType == 5) // Crater or Cave Wall
                         {
-                            // Check actual rectangle intersection
                             Rectangle obstacleRect = new Rectangle(tx * TileMap.TileSize, ty * TileMap.TileSize, TileMap.TileSize, TileMap.TileSize);
                             if (playerRect.Intersects(obstacleRect))
                             {
@@ -182,8 +215,7 @@ namespace AntigravityMoon
                         }
                     }
                 }
-                
-                // Check entity collision
+
                 if (!collision)
                 {
                     foreach (var entity in entityManager.GetEntities())
@@ -191,7 +223,6 @@ namespace AntigravityMoon
                         if (entity.IsSolid)
                         {
                             Rectangle entityRect = entity.GetBounds();
-
                             if (playerRect.Intersects(entityRect))
                             {
                                 collision = true;
@@ -205,6 +236,35 @@ namespace AntigravityMoon
                 {
                     Position = nextPos;
                 }
+                else
+                {
+                    _velocity = Vector2.Zero; // Stop sliding on solid walls
+                }
+            }
+
+            // Hard clamp player boundaries (Surface vs Cave room)
+            bool isUnderground = Position.Y < -500_000;
+            if (isUnderground)
+            {
+                int chunkX = (int)Math.Floor(Position.X / 1024f);
+                int chunkY = (int)Math.Floor(Position.Y / 1024f);
+
+                float minX = chunkX * 1024f + 64f;
+                float maxX = chunkX * 1024f + 1024f - 64f - 40f;
+                float minY = chunkY * 1024f + 64f;
+                float maxY = chunkY * 1024f + 1024f - 64f - 40f;
+
+                Position = new Vector2(
+                    MathHelper.Clamp(Position.X, minX, maxX),
+                    MathHelper.Clamp(Position.Y, minY, maxY)
+                );
+            }
+            else
+            {
+                Position = new Vector2(
+                    MathHelper.Clamp(Position.X, 0f, 6400f - 40f),
+                    MathHelper.Clamp(Position.Y, 0f, 6400f - 40f)
+                );
             }
 
             // Convert Mouse to World Coordinates
@@ -235,16 +295,19 @@ namespace AntigravityMoon
                 }
                 else
                 {
-                    // Antigravity Laser Logic (Harvesting)
                     HandleInput(mstate, entityManager, mousePos);
                 }
             }
-            
+
             _prevMouseState = mstate;
             _prevKeyboardState = kstate;
 
-            // Oxygen Decay (Always)
+            // Oxygen Decay (Ice caves double oxygen decay rate)
             float currentOxygenDecayRate = _oxygenDecayRate * (1.0f - (GetTotalOxygenBuff() / 100f));
+            if (inIceCaves)
+            {
+                currentOxygenDecayRate *= 2f;
+            }
             Oxygen -= currentOxygenDecayRate * dt;
             if (Oxygen <= 0)
             {

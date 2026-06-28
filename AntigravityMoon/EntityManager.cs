@@ -55,7 +55,37 @@ namespace AntigravityMoon
                 }
 
                 string key = entity.Type.ToLower().Replace(" ", "_");
-                if (entity is Structure s)
+                Color? tintColor = null;
+
+                if (entity.Type == "Ice Crystal")
+                {
+                    key = "crystal";
+                    tintColor = Color.LightCyan;
+                }
+                else if (entity.Type == "Volcanic Ore")
+                {
+                    key = "metal";
+                    tintColor = Color.Red;
+                }
+                else if (entity.Type == "Radioactive Slag")
+                {
+                    key = "metal";
+                    tintColor = Color.Green;
+                }
+                else if (entity.Type == "Colony Depot")
+                {
+                    key = "machinery";
+                }
+                else if (entity.Type == "HAB Dome")
+                {
+                    key = "hab";
+                }
+                else if (entity.Type == "Defense Node")
+                {
+                    key = "radar";
+                    tintColor = Color.Orange;
+                }
+                else if (entity is Structure s)
                 {
                     if (key == "spaceship")
                     {
@@ -72,6 +102,8 @@ namespace AntigravityMoon
                         }
                     }
                 }
+
+                entity.TintColor = tintColor ?? Color.White;
 
                 if (textures != null && textures.ContainsKey(key))
                 {

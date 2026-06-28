@@ -126,10 +126,12 @@ namespace AntigravityMoon
         public override void Draw(SpriteBatch spriteBatch, Texture2D texture, Vector2 mouseWorldPos)
         {
             Rectangle bounds = GetBounds();
+            Color color = TintColor;
 
-            Color color = Color.White;
-            // if (Type == "Greenhouse") color = Color.LimeGreen; // Removed tint
-            // else if (Type == "Workbench") color = Color.Brown; // Removed tint
+            if (color == Color.White)
+            {
+                if (Type == "Defense Node") color = Color.Orange;
+            }
 
             if (Rotation != 0f && Type != "Fence")
             {

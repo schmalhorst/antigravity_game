@@ -77,30 +77,89 @@ namespace AntigravityMoon
             int seed = chunkCoord.X * 1000 + chunkCoord.Y;
             Random chunkRandom = new Random(seed);
 
+            // Define craters list
+            var craters = new (int X, int Y, int Radius)[]
+            {
+                (16, 16, 5),   // Starter Crater near starting spaceship/colony
+                (45, 25, 6),
+                (20, 65, 5),
+                (70, 75, 7)
+            };
+
             for (int x = 0; x < ChunkSize; x++)
             {
                 for (int y = 0; y < ChunkSize; y++)
                 {
+                    int worldTileX = chunkCoord.X * ChunkSize + x;
+                    int worldTileY = chunkCoord.Y * ChunkSize + y;
+
                     double roll = chunkRandom.NextDouble();
-                    if (roll < 0.05) chunk.Tiles[x, y] = 2;       // 5% Crater
-                    else if (roll < 0.15) chunk.Tiles[x, y] = 1;  // 10% Rock
-                    else chunk.Tiles[x, y] = 0;                    // 85% Dust
+                    int tileVal = 0;
+                    if (roll < 0.05) tileVal = 2;       // 5% Crater
+                    else if (roll < 0.15) tileVal = 1;  // 10% Rock
+
+                    // Overwrite with custom craters
+                    foreach (var crater in craters)
+                    {
+                        float dist = (float)Math.Sqrt(Math.Pow(worldTileX - crater.X, 2) + Math.Pow(worldTileY - crater.Y, 2));
+                        if (dist < crater.Radius)
+                        {
+                            if (dist >= crater.Radius - 1.1f)
+                            {
+                                tileVal = 2; // Crater rim wall (solid/black)
+                            }
+                            else
+                            {
+                                tileVal = 0; // Flat dust floor inside crater (walkable)
+                            }
+                        }
+                    }
+
+                    chunk.Tiles[x, y] = tileVal;
                 }
             }
 
             // --- UNDERGROUND BIOME ---
             if (chunkCoord.Y < -500)
             {
-                // This is an underground cave room.
+                // Determine cave biome and resource type based on Y chunk coordinate
+                string resourceType = "Metal";
+                bool isVolcanic = false;
+                if (chunkCoord.Y <= -3500)
+                {
+                    resourceType = "Radioactive Slag";
+                }
+                else if (chunkCoord.Y <= -2500)
+                {
+                    resourceType = "Volcanic Ore";
+                    isVolcanic = true;
+                }
+                else if (chunkCoord.Y <= -1500)
+                {
+                    resourceType = "Ice Crystal";
+                }
+                else
+                {
+                    resourceType = "Metal";
+                }
+
                 // Fill entirely with floor, border with walls.
                 for (int x = 0; x < ChunkSize; x++)
                 {
                     for (int y = 0; y < ChunkSize; y++)
                     {
                         if (x == 0 || x == ChunkSize - 1 || y == 0 || y == ChunkSize - 1)
+                        {
                             chunk.Tiles[x, y] = 5; // Wall
+                        }
                         else
+                        {
                             chunk.Tiles[x, y] = 4; // Floor
+                            if (isVolcanic && chunkRandom.NextDouble() < 0.10)
+                            {
+                                chunk.Tiles[x, y] = 7; // Lava
+                            }
+                        }
                     }
                 }
                 
@@ -113,10 +172,10 @@ namespace AntigravityMoon
                 {
                     int rx = chunkRandom.Next(2, ChunkSize - 2);
                     int ry = chunkRandom.Next(2, ChunkSize - 2);
-                    if (rx != ChunkSize / 2 || ry != ChunkSize / 2) // don't spawn exactly on rope
+                    if ((rx != ChunkSize / 2 || ry != ChunkSize / 2) && chunk.Tiles[rx, ry] != 7) // don't spawn on rope or lava
                     {
                         Vector2 spawnPos = new Vector2((chunkCoord.X * ChunkSize + rx) * TileSize + TileSize / 2, (chunkCoord.Y * ChunkSize + ry) * TileSize + TileSize / 2);
-                        OnSpawnEntity?.Invoke(spawnPos, "Metal");
+                        OnSpawnEntity?.Invoke(spawnPos, resourceType);
                     }
                 }
                 
@@ -131,72 +190,71 @@ namespace AntigravityMoon
                         chunk.Tiles[x, y] = 0;
             }
 
-            // --- Tunnel / Cave Placement ---
-            bool isFirstTunnelChunk = (chunkCoord.X == 1 && chunkCoord.Y == 1);
-            bool placeTunnel = false;
-
-            if (isFirstTunnelChunk && !_firstTunnelPlaced)
-            {
-                placeTunnel = true;
-                _firstTunnelPlaced = true;
-            }
-            else if (!isFirstTunnelChunk && chunkCoord.X != 0 && chunkCoord.Y != 0)
-            {
-                double tunnelRoll = chunkRandom.NextDouble();
-                if (tunnelRoll < 0.001) // ~0.1% per chunk
-                {
-                    Vector2 candidatePos = new Vector2(chunkCoord.X * ChunkSize * TileSize, chunkCoord.Y * ChunkSize * TileSize);
-                    bool farEnough = (_lastTunnelPos == Vector2.Zero) || Vector2.Distance(candidatePos, _lastTunnelPos) > 8000f;
-                    bool farFromSpawn = Vector2.Distance(candidatePos, Vector2.Zero) > 3000f;
-
-                    if (farEnough && farFromSpawn)
-                    {
-                        placeTunnel = true;
-                    }
-                }
-            }
-
-            if (placeTunnel)
-            {
-               // Place the entrance at a fixed local tile position within the chunk
-               int ex = 8;
-               int ey = 8;
-               chunk.Tiles[ex, ey] = 3; // Tunnel entrance
-               
-               Vector2 entrancePos = new Vector2((chunkCoord.X * ChunkSize + ex) * TileSize, (chunkCoord.Y * ChunkSize + ey) * TileSize);
-               TunnelEntrances.Add(entrancePos);
-               _lastTunnelPos = entrancePos;
-            }
-
-            // --- Regular Resource Spawning ---
+            // --- Fixed Cave Entrance Placement & Resource Spawning ---
             for (int x = 0; x < ChunkSize; x++)
             {
                 for (int y = 0; y < ChunkSize; y++)
                 {
-                    // Don't spawn on craters or tunnel entrances
-                    if (chunk.Tiles[x, y] != 2 && chunk.Tiles[x, y] != 3)
+                    int worldTileX = chunkCoord.X * ChunkSize + x;
+                    int worldTileY = chunkCoord.Y * ChunkSize + y;
+                    Vector2 worldPos = new Vector2(worldTileX * TileSize + TileSize / 2, worldTileY * TileSize + TileSize / 2);
+
+                    // Check if this tile is a fixed cave entrance
+                    bool isEntrance = false;
+                    if ((worldTileX == 15 && worldTileY == 45) ||
+                        (worldTileX == 75 && worldTileY == 20) ||
+                        (worldTileX == 20 && worldTileY == 80) ||
+                        (worldTileX == 80 && worldTileY == 80))
                     {
-                        int worldTileX = chunkCoord.X * ChunkSize + x;
-                        int worldTileY = chunkCoord.Y * ChunkSize + y;
-                        Vector2 worldPos = new Vector2(worldTileX * TileSize + TileSize / 2, worldTileY * TileSize + TileSize / 2);
+                        chunk.Tiles[x, y] = 3; // Tunnel entrance
+                        isEntrance = true;
+                        
+                        Vector2 entrancePos = new Vector2(worldTileX * TileSize, worldTileY * TileSize);
+                        if (!TunnelEntrances.Contains(entrancePos))
+                        {
+                            TunnelEntrances.Add(entrancePos);
+                        }
+                    }
 
-                        double spawnRoll = chunkRandom.NextDouble();
-
-                        bool isDarkSide = chunkCoord.X > 2000;
-
-                        // Don't spawn items too close to start location
-                        if (Vector2.Distance(worldPos, Vector2.Zero) < 800f)
+                    if (!isEntrance)
+                    {
+                        // Don't spawn outside surface map boundaries
+                        if (worldTileX < 0 || worldTileX >= 100 || worldTileY < 0 || worldTileY >= 100)
                             continue;
 
-                        if (isDarkSide)
+                        // Don't spawn items too close to start location / spaceship hub / depot hub
+                        if (Vector2.Distance(worldPos, new Vector2(560, 284)) < 350f)
+                            continue;
+                        if (Vector2.Distance(worldPos, new Vector2(1200, 600)) < 250f)
+                            continue;
+
+                        // Check if it's inside one of our custom craters:
+                        bool insideCrater = false;
+                        foreach (var crater in craters)
                         {
-                            if (spawnRoll < 0.05) OnSpawnEntity?.Invoke(worldPos, "Crystal");
-                            else if (spawnRoll < 0.10) OnSpawnEntity?.Invoke(worldPos, "Rock");
+                            float dist = (float)Math.Sqrt(Math.Pow(worldTileX - crater.X, 2) + Math.Pow(worldTileY - crater.Y, 2));
+                            if (dist < crater.Radius - 1.1f) // inside floor
+                            {
+                                insideCrater = true;
+                                break;
+                            }
+                        }
+
+                        if (insideCrater)
+                        {
+                            double spawnRoll = chunkRandom.NextDouble();
+                            if (spawnRoll < 0.25) OnSpawnEntity?.Invoke(worldPos, "Rock");
+                            else if (spawnRoll < 0.30) OnSpawnEntity?.Invoke(worldPos, "Crystal");
                         }
                         else
                         {
-                            if (spawnRoll < 0.02) OnSpawnEntity?.Invoke(worldPos, "Rock");
-                            else if (spawnRoll < 0.03) OnSpawnEntity?.Invoke(worldPos, "Crystal");
+                            // Don't spawn on craters
+                            if (chunk.Tiles[x, y] != 2)
+                            {
+                                double spawnRoll = chunkRandom.NextDouble();
+                                if (spawnRoll < 0.02) OnSpawnEntity?.Invoke(worldPos, "Rock");
+                                else if (spawnRoll < 0.03) OnSpawnEntity?.Invoke(worldPos, "Crystal");
+                            }
                         }
                     }
                 }
@@ -204,7 +262,6 @@ namespace AntigravityMoon
 
             return chunk;
         }
-
 
 
         public void Explore(Vector2 position, float radius)
@@ -219,6 +276,10 @@ namespace AntigravityMoon
                 {
                     if (Vector2.Distance(new Vector2(x * TileSize, y * TileSize), position) <= radius)
                     {
+                        // Ensure explored coordinates stay inside bounds on surface
+                        if (y >= -500 * ChunkSize && (x < 0 || x >= 100 || y < 0 || y >= 100))
+                            continue;
+
                         Point chunkCoord = GetChunkCoord(x, y);
                         Chunk chunk = GetOrGenerateChunk(chunkCoord);
 
@@ -234,12 +295,28 @@ namespace AntigravityMoon
         public int GetTile(int x, int y)
         {
             Point chunkCoord = GetChunkCoord(x, y);
-            Chunk chunk = GetOrGenerateChunk(chunkCoord);
+            
+            // Underground rooms bypass 100x100 grid constraints
+            if (chunkCoord.Y < -500)
+            {
+                Chunk chunk = GetOrGenerateChunk(chunkCoord);
+                int localX = x >= 0 ? x % ChunkSize : (ChunkSize - 1) - ((-x - 1) % ChunkSize);
+                int localY = y >= 0 ? y % ChunkSize : (ChunkSize - 1) - ((-y - 1) % ChunkSize);
+                return chunk.Tiles[localX, localY];
+            }
 
-            int localX = x >= 0 ? x % ChunkSize : (ChunkSize - 1) - ((-x - 1) % ChunkSize);
-            int localY = y >= 0 ? y % ChunkSize : (ChunkSize - 1) - ((-y - 1) % ChunkSize);
+            // Surface boundary check
+            if (x < 0 || x >= 100 || y < 0 || y >= 100)
+            {
+                return 2; // Crater (solid)
+            }
 
-            return chunk.Tiles[localX, localY];
+            {
+                Chunk chunk = GetOrGenerateChunk(chunkCoord);
+                int localX = x >= 0 ? x % ChunkSize : (ChunkSize - 1) - ((-x - 1) % ChunkSize);
+                int localY = y >= 0 ? y % ChunkSize : (ChunkSize - 1) - ((-y - 1) % ChunkSize);
+                return chunk.Tiles[localX, localY];
+            }
         }
 
         /// <summary>
@@ -257,6 +334,11 @@ namespace AntigravityMoon
         public bool IsExplored(int x, int y)
         {
             Point chunkCoord = GetChunkCoord(x, y);
+            if (chunkCoord.Y >= -500 && (x < 0 || x >= 100 || y < 0 || y >= 100))
+            {
+                return false;
+            }
+
             if (!_chunks.ContainsKey(chunkCoord)) return false;
 
             Chunk chunk = _chunks[chunkCoord];

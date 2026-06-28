@@ -195,6 +195,31 @@ namespace AntigravityMoon
             }
 
             // Metal texture is now loaded from Content/Images/World/metal.png above
+            _lightMaskTexture = CreateLightMaskTexture(512);
+        }
+
+        private Texture2D CreateLightMaskTexture(int size)
+        {
+            Texture2D tex = new Texture2D(GraphicsDevice, size, size);
+            Color[] data = new Color[size * size];
+            float center = size / 2f;
+            float maxDist = size / 2f;
+            
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dist = Vector2.Distance(new Vector2(center, center), new Vector2(x, y));
+                    // Radial gradient: transparent at center, black at edge
+                    float alpha = MathHelper.Clamp(dist / maxDist, 0f, 1f);
+                    // Square it for a smoother, nicer drop-off
+                    alpha = alpha * alpha;
+                    
+                    data[y * size + x] = Color.Black * alpha;
+                }
+            }
+            tex.SetData(data);
+            return tex;
         }
 
         private void LoadTexture(string folder, string name)
@@ -292,6 +317,8 @@ namespace AntigravityMoon
         private bool _showGreenhouseMenu = false;
         private List<CropData> _crops = new List<CropData>();
         private bool _showSpaceshipMenu = false;
+        private bool _showColonyMenu = false;
+        private Texture2D _lightMaskTexture;
         private Structure _interactedStructure;
         
         // Context Menu
@@ -448,6 +475,39 @@ namespace AntigravityMoon
                         { "Metal", 8 },
                         { "Crystal", 15 },
                         { "Rock", 20 }
+                    };
+                default:
+                    return null;
+            }
+        }
+
+        private Dictionary<string, int> GetColonyUpgradeCosts(int stage)
+        {
+            switch (stage)
+            {
+                case 0: // Stage 0 -> 1: HAB Dome
+                    return new Dictionary<string, int>
+                    {
+                        { "Rock", 50 },
+                        { "Crystal", 20 },
+                        { "Metal", 15 }
+                    };
+                case 1: // Stage 1 -> 2: Reactor
+                    return new Dictionary<string, int>
+                    {
+                        { "Rock", 60 },
+                        { "Crystal", 30 },
+                        { "Metal", 20 },
+                        { "Volcanic Ore", 10 }
+                    };
+                case 2: // Stage 2 -> 3: Defense Node
+                    return new Dictionary<string, int>
+                    {
+                        { "Rock", 80 },
+                        { "Crystal", 40 },
+                        { "Metal", 25 },
+                        { "Radioactive Slag", 15 },
+                        { "Ice Crystal", 10 }
                     };
                 default:
                     return null;
@@ -698,6 +758,11 @@ namespace AntigravityMoon
                         Structure ship = new Structure(_spaceshipPosition, "Spaceship", 384, 168);
                         ship.RepairStage = 1;
                         _entityManager.AddEntity(ship);
+
+                        // Create Colony Depot structure at (1200, 600)
+                        Structure colonyDepot = new Structure(new Vector2(1200, 600), "Colony Depot", 160, 160);
+                        colonyDepot.RepairStage = 0;
+                        _entityManager.AddEntity(colonyDepot);
                         
                         // Ensure player is at a spawn point below the ship
                         _player.Position = new Vector2(_spaceshipPosition.X + 192, _spaceshipPosition.Y + 180);
@@ -903,13 +968,66 @@ namespace AntigravityMoon
 
             if (nearEntrance && currentKeyboardState.IsKeyDown(Keys.E) && !_prevKeyboardState.IsKeyDown(Keys.E))
             {
-                // Warp Underground (minus exactly 1000 chunks)
-                _player.Position = new Vector2(_player.Position.X, _player.Position.Y - 1_024_000);
+                // Find nearest entrance tile in the 5x5 grid around the player
+                int bestX = 0;
+                int bestY = 0;
+                float minDist = float.MaxValue;
+                for (int dx = -2; dx <= 2; dx++)
+                {
+                    for (int dy = -2; dy <= 2; dy++)
+                    {
+                        int tx = currentTileX + dx;
+                        int ty = currentTileY + dy;
+                        if (_tileMap.GetTile(tx, ty) == 3)
+                        {
+                            float dist = Vector2.Distance(_player.Position, new Vector2(tx * 64, ty * 64));
+                            if (dist < minDist)
+                            {
+                                minDist = dist;
+                                bestX = tx;
+                                bestY = ty;
+                            }
+                        }
+                    }
+                }
+
+                // Warp Y depending on the entrance coordinate
+                if (bestX == 15 && bestY == 45) // Dark Caves
+                {
+                    _player.Position = new Vector2(_player.Position.X, _player.Position.Y - 1_024_000);
+                }
+                else if (bestX == 75 && bestY == 20) // Ice Caves
+                {
+                    _player.Position = new Vector2(_player.Position.X, _player.Position.Y - 2_048_000);
+                }
+                else if (bestX == 20 && bestY == 80) // Volcanic Caves
+                {
+                    _player.Position = new Vector2(_player.Position.X, _player.Position.Y - 3_072_000);
+                }
+                else if (bestX == 80 && bestY == 80) // Radioactive Caves
+                {
+                    _player.Position = new Vector2(_player.Position.X, _player.Position.Y - 4_096_000);
+                }
             }
             else if (nearExit && currentKeyboardState.IsKeyDown(Keys.E) && !_prevKeyboardState.IsKeyDown(Keys.E))
             {
-                // Warp Surface
-                _player.Position = new Vector2(_player.Position.X, _player.Position.Y + 1_024_000);
+                // Warp back to surface depending on current Y coordinate range
+                if (_player.Position.Y < -3_500_000) // Radioactive Caves
+                {
+                    _player.Position = new Vector2(_player.Position.X, _player.Position.Y + 4_096_000);
+                }
+                else if (_player.Position.Y < -2_500_000) // Volcanic Caves
+                {
+                    _player.Position = new Vector2(_player.Position.X, _player.Position.Y + 3_072_000);
+                }
+                else if (_player.Position.Y < -1_500_000) // Ice Caves
+                {
+                    _player.Position = new Vector2(_player.Position.X, _player.Position.Y + 2_048_000);
+                }
+                else if (_player.Position.Y < -500_000) // Dark Caves
+                {
+                    _player.Position = new Vector2(_player.Position.X, _player.Position.Y + 1_024_000);
+                }
             }
 
             // --- Lava Tunnel Detection ---
@@ -1214,19 +1332,24 @@ namespace AntigravityMoon
             }
 
             // Close Menus with Escape or moving away
-            if (_showWorkbenchMenu || _showGreenhouseMenu || _showSpaceshipMenu)
+            if (_showWorkbenchMenu || _showGreenhouseMenu || _showSpaceshipMenu || _showColonyMenu)
             {
                 if (currentKeyboardState.IsKeyDown(Keys.Escape))
                 {
                     _showWorkbenchMenu = false;
                     _showGreenhouseMenu = false;
                     _showSpaceshipMenu = false;
+                    _showColonyMenu = false;
+                    _showContributePopup = false;
                     _interactedStructure = null;
                 }
                 else if (_interactedStructure != null && !_interactedStructure.GetBounds().Intersects(new Rectangle((int)_player.Position.X - 60, (int)_player.Position.Y - 60, 160, 160)))
                 {
                     _showWorkbenchMenu = false;
                     _showGreenhouseMenu = false;
+                    _showSpaceshipMenu = false;
+                    _showColonyMenu = false;
+                    _showContributePopup = false;
                     _interactedStructure = null;
                 }
                 
@@ -1235,30 +1358,167 @@ namespace AntigravityMoon
                 {
                     // Check UI bounds (Dynamic)
                     Vector2 mousePos = new Vector2(currentMouseState.X, currentMouseState.Y);
+
+                    // Centralized Contribution Popup (Top Priority Click Consumer)
+                    if (_showContributePopup && _interactedStructure != null)
+                    {
+                        int popW = 380;
+                        int popH = 60 + _contributeMaterialKeys.Count * 65 + 60;
+                        int popX = (GraphicsDevice.Viewport.Width - popW) / 2;
+                        int popY = (GraphicsDevice.Viewport.Height - popH) / 2;
+                        
+                        var upgradeCosts = _interactedStructure.Type == "Colony Depot" ? 
+                            GetColonyUpgradeCosts(_interactedStructure.RepairStage) : 
+                            GetSpaceshipUpgradeCosts(_interactedStructure.RepairStage);
+                        
+                        bool clickedInside = false;
+                        
+                        for (int i = 0; i < _contributeMaterialKeys.Count; i++)
+                        {
+                            string mat = _contributeMaterialKeys[i];
+                            int rowY = popY + 55 + i * 65 + 18;
+                            
+                            Rectangle minusBtn = new Rectangle(popX + 30, rowY, 35, 30);
+                            Rectangle plusBtn = new Rectangle(popX + 310, rowY, 35, 30);
+                            Rectangle numField = new Rectangle(popX + 75, rowY, 225, 30);
+                            
+                            if (minusBtn.Contains(mousePos))
+                            {
+                                int current = _contributeAmounts[mat];
+                                if (current > 0) _contributeAmounts[mat] = current - 1;
+                                if (_contributeFocusedField == i) _contributeTypingBuffer = _contributeAmounts[mat].ToString();
+                                clickedInside = true;
+                            }
+                            else if (plusBtn.Contains(mousePos))
+                            {
+                                int current = _contributeAmounts[mat];
+                                int have = _player.Inventory.CountItem(mat);
+                                int stillNeeded = (upgradeCosts != null && upgradeCosts.ContainsKey(mat)) ? 
+                                    upgradeCosts[mat] - _interactedStructure.GetContributed(mat) : 0;
+                                int maxAdd = Math.Min(have, stillNeeded);
+                                if (current < maxAdd) _contributeAmounts[mat] = current + 1;
+                                if (_contributeFocusedField == i) _contributeTypingBuffer = _contributeAmounts[mat].ToString();
+                                clickedInside = true;
+                            }
+                            else if (numField.Contains(mousePos))
+                            {
+                                if (_contributeFocusedField >= 0 && _contributeFocusedField < _contributeMaterialKeys.Count)
+                                {
+                                    CommitContributeTyping();
+                                }
+                                _contributeFocusedField = i;
+                                _contributeTypingBuffer = _contributeAmounts[mat].ToString();
+                                clickedInside = true;
+                            }
+                        }
+                        
+                        Rectangle confirmBtn = new Rectangle(popX + 30, popY + popH - 55, 140, 40);
+                        Rectangle cancelBtn = new Rectangle(popX + 210, popY + popH - 55, 140, 40);
+                        
+                        if (confirmBtn.Contains(mousePos))
+                        {
+                            CommitContributeTyping();
+                            
+                            bool contributed = false;
+                            foreach (var mat in _contributeMaterialKeys)
+                            {
+                                int amount = _contributeAmounts[mat];
+                                if (amount > 0)
+                                {
+                                    _player.Inventory.RemoveItems(mat, amount);
+                                    _interactedStructure.ContributeMaterial(mat, amount);
+                                    contributed = true;
+                                }
+                            }
+                            
+                            if (contributed && upgradeCosts != null)
+                            {
+                                bool allMet = true;
+                                foreach (var cost in upgradeCosts)
+                                {
+                                    if (_interactedStructure.GetContributed(cost.Key) < cost.Value)
+                                    {
+                                        allMet = false;
+                                        break;
+                                    }
+                                }
+                                if (allMet)
+                                {
+                                    int prevStage = _interactedStructure.RepairStage;
+                                    _interactedStructure.ClearContributions();
+                                    _interactedStructure.UpgradeRepairStage();
+                                    
+                                    if (_interactedStructure.Type == "Colony Depot")
+                                    {
+                                        if (prevStage == 0)
+                                        {
+                                            var habDome = new Structure(new Vector2(_interactedStructure.Position.X - 140, _interactedStructure.Position.Y), "HAB Dome", 120, 120);
+                                            _entityManager.AddEntity(habDome);
+                                        }
+                                        else if (prevStage == 1)
+                                        {
+                                            var reactor = new Structure(new Vector2(_interactedStructure.Position.X + 180, _interactedStructure.Position.Y), "Reactor", 80, 80);
+                                            _entityManager.AddEntity(reactor);
+                                        }
+                                        else if (prevStage == 2)
+                                        {
+                                            var defNode = new Structure(new Vector2(_interactedStructure.Position.X, _interactedStructure.Position.Y + 180), "Defense Node", 80, 80);
+                                            _entityManager.AddEntity(defNode);
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            _showContributePopup = false;
+                            clickedInside = true;
+                        }
+                        else if (cancelBtn.Contains(mousePos))
+                        {
+                            _showContributePopup = false;
+                            clickedInside = true;
+                        }
+                        
+                        if (!clickedInside)
+                        {
+                            if (_contributeFocusedField >= 0)
+                            {
+                                CommitContributeTyping();
+                                _contributeFocusedField = -1;
+                            }
+                        }
+                        
+                        _prevMouseState = currentMouseState;
+                        return;
+                    }
                     
                     // Menu Rect: Centered 600x400
                     int menuWidth = Math.Min(GraphicsDevice.Viewport.Width - 40, 600);
                     int menuHeight = 400; // Default for Workbench
                     if (_showGreenhouseMenu)
                     {
-                        menuHeight = Math.Min(GraphicsDevice.Viewport.Height - 40, 200 + (_crops.Count * 80) + 120); // 200 base + 80 per crop + 120 for harvest/timer
+                        menuHeight = Math.Min(GraphicsDevice.Viewport.Height - 40, 200 + (_crops.Count * 80) + 120);
                     }
                     Rectangle menuRect = new Rectangle((GraphicsDevice.Viewport.Width - menuWidth) / 2, (GraphicsDevice.Viewport.Height - menuHeight) / 2, menuWidth, menuHeight);
 
-                    // Close Button (Right - 40, Top + 10) -> (660+600-40, 340+10) = (1220, 350, 30, 30)
-                    if (new Rectangle(menuRect.Right - 40, menuRect.Top + 10, 30, 30).Contains(mousePos))
+                    // Close Button
+                    if (new Rectangle(menuRect.Right - 40, menuRect.Top + 10, 30, 30).Contains(mousePos) && !_showSpaceshipMenu && !_showColonyMenu)
                     {
                         _showWorkbenchMenu = false;
                         _showGreenhouseMenu = false;
                         _interactedStructure = null;
-                        _prevMouseState = currentMouseState; // Update state before returning
+                        _prevMouseState = currentMouseState;
                         return;
                     }
 
                     if (_showWorkbenchMenu)
                     {
-                        // Upgrade Backpack Button (Rect: X+50, Y+100, 300, 60) -> (710, 440, 300, 60)
-                        if (new Rectangle(menuRect.X + 50, menuRect.Top + 100, 300, 60).Contains(mousePos))
+                        // Upgrade Backpack Button
+                        Rectangle bagRect = new Rectangle(menuRect.X + 30, menuRect.Top + 100, 250, 60);
+                        Rectangle lanternRect = new Rectangle(menuRect.X + 30, menuRect.Top + 220, 250, 60);
+                        Rectangle heatRect = new Rectangle(menuRect.X + 320, menuRect.Top + 100, 250, 60);
+                        Rectangle radRect = new Rectangle(menuRect.X + 320, menuRect.Top + 220, 250, 60);
+                        
+                        if (bagRect.Contains(mousePos))
                         {
                             int cost = 0;
                             if (_player.Inventory.UpgradeLevel == 0) cost = 10;
@@ -1269,6 +1529,56 @@ namespace AntigravityMoon
                                 if (_player.Inventory.RemoveItems("Crystal", cost))
                                 {
                                     _player.Inventory.Upgrade();
+                                }
+                            }
+                        }
+                        else if (lanternRect.Contains(mousePos))
+                        {
+                            if (_player.Inventory.CountItem("Rock") >= 5 && _player.Inventory.CountItem("Crystal") >= 5)
+                            {
+                                if (_player.Inventory.CanAddItem("Lantern"))
+                                {
+                                    _player.Inventory.RemoveItems("Rock", 5);
+                                    _player.Inventory.RemoveItems("Crystal", 5);
+                                    _player.Inventory.AddItem("Lantern");
+                                }
+                                else
+                                {
+                                    _inventoryFullTimer = 2.0f;
+                                }
+                            }
+                        }
+                        else if (heatRect.Contains(mousePos))
+                        {
+                            if (_player.Inventory.CountItem("Rock") >= 10 && _player.Inventory.CountItem("Crystal") >= 10 && _player.Inventory.CountItem("Metal") >= 5)
+                            {
+                                if (_player.Inventory.CanAddItem("Heat Shield"))
+                                {
+                                    _player.Inventory.RemoveItems("Rock", 10);
+                                    _player.Inventory.RemoveItems("Crystal", 10);
+                                    _player.Inventory.RemoveItems("Metal", 5);
+                                    _player.Inventory.AddItem("Heat Shield");
+                                }
+                                else
+                                {
+                                    _inventoryFullTimer = 2.0f;
+                                }
+                            }
+                        }
+                        else if (radRect.Contains(mousePos))
+                        {
+                            if (_player.Inventory.CountItem("Rock") >= 15 && _player.Inventory.CountItem("Crystal") >= 15 && _player.Inventory.CountItem("Metal") >= 8)
+                            {
+                                if (_player.Inventory.CanAddItem("Rad Shield"))
+                                {
+                                    _player.Inventory.RemoveItems("Rock", 15);
+                                    _player.Inventory.RemoveItems("Crystal", 15);
+                                    _player.Inventory.RemoveItems("Metal", 8);
+                                    _player.Inventory.AddItem("Rad Shield");
+                                }
+                                else
+                                {
+                                    _inventoryFullTimer = 2.0f;
                                 }
                             }
                         }
@@ -1310,7 +1620,6 @@ namespace AntigravityMoon
                             cropIndex++;
                         }
 
-                        // Harvest Button is below the crop list
                         int harvestYOffset = startYOffset + (_crops.Count * buttonSpacing) + 20;
                         Rectangle harvestBtnRect = new Rectangle(menuRect.X + 50, menuRect.Top + harvestYOffset, 300, 60);
                         
@@ -1318,28 +1627,23 @@ namespace AntigravityMoon
                         {
                              if (_interactedStructure != null && _interactedStructure.IsReadyToHarvest)
                              {
-                                 bool harvestedAny = false;
                                  while (_interactedStructure.ReadyCount > 0)
                                  {
-                                     // Peek at what crop is ready
                                      string readyCrop = _interactedStructure.CropType;
-                                     if (string.IsNullOrEmpty(readyCrop)) readyCrop = "Corn"; // Fallback just in case
+                                     if (string.IsNullOrEmpty(readyCrop)) readyCrop = "Corn";
                                      
-                                     // Check if we can add the specific Crop 
                                      if (_player.Inventory.CanAddItem(readyCrop))
                                      {
                                          string crop = _interactedStructure.Harvest();
                                          if (crop != null)
                                          {
                                              _player.Inventory.AddItem(crop);
-                                             harvestedAny = true;
                                          }
                                      }
                                      else
                                      {
-                                         // Inventory Full Warning
                                          _inventoryFullTimer = 2.0f;
-                                         break; // Stop harvesting if inventory is full
+                                         break;
                                      }
                                  }
                              }
@@ -1347,24 +1651,18 @@ namespace AntigravityMoon
                     }
                     else if (_showSpaceshipMenu)
                     {
-                        // Menu Rect: Centered 350x400
                         int spWidth = 350;
                         int spHeight = 400;
                         int spX = (GraphicsDevice.Viewport.Width - spWidth) / 2;
                         int spY = (GraphicsDevice.Viewport.Height - spHeight) / 2;
                         
-                        // Refill Button
                         Rectangle refillBtn = new Rectangle(spX + 50, spY + 60, 250, 40);
-                        // Sleep Button
                         Rectangle sleepBtn = new Rectangle(spX + 50, spY + 110, 250, 40);
-                        // Upgrade Button
                         Rectangle upgradeBtn = new Rectangle(spX + 50, spY + 160, 250, 40);
-                        // Exit Button
                         Rectangle exitBtn = new Rectangle(spX + 300, spY + 10, 40, 40);
 
                         if (refillBtn.Contains(mousePos))
                         {
-                            // Cost: 2 Rocks
                             if (_player.Inventory.RemoveItems("Rock", 2))
                             {
                                 _player.RefillOxygen();
@@ -1384,7 +1682,6 @@ namespace AntigravityMoon
                         }
                         else if (_interactedStructure != null && _interactedStructure.RepairStage < 4 && upgradeBtn.Contains(mousePos) && !_showContributePopup)
                         {
-                            // Open contribution popup
                             var upgradeCosts = GetSpaceshipUpgradeCosts(_interactedStructure.RepairStage);
                             if (upgradeCosts != null)
                             {
@@ -1402,128 +1699,8 @@ namespace AntigravityMoon
                                 return;
                             }
                         }
-                        else if (_showContributePopup)
-                        {
-                            // Handle contribute popup clicks
-                            int popW = 380;
-                            int popH = 60 + _contributeMaterialKeys.Count * 65 + 60;
-                            int popX = (GraphicsDevice.Viewport.Width - popW) / 2;
-                            int popY = (GraphicsDevice.Viewport.Height - popH) / 2;
-                            
-                            var upgradeCosts = GetSpaceshipUpgradeCosts(_interactedStructure.RepairStage);
-                            bool clickedInside = false;
-                            
-                            for (int i = 0; i < _contributeMaterialKeys.Count; i++)
-                            {
-                                string mat = _contributeMaterialKeys[i];
-                                int rowY = popY + 55 + i * 65 + 18;
-                                
-                                // Minus button
-                                Rectangle minusBtn = new Rectangle(popX + 30, rowY, 35, 30);
-                                // Plus button
-                                Rectangle plusBtn = new Rectangle(popX + 310, rowY, 35, 30);
-                                // Number field (clickable to focus)
-                                Rectangle numField = new Rectangle(popX + 75, rowY, 225, 30);
-                                
-                                if (minusBtn.Contains(mousePos))
-                                {
-                                    int current = _contributeAmounts[mat];
-                                    if (current > 0) _contributeAmounts[mat] = current - 1;
-                                    // Update typing buffer if this field is focused
-                                    if (_contributeFocusedField == i) _contributeTypingBuffer = _contributeAmounts[mat].ToString();
-                                    clickedInside = true;
-                                }
-                                else if (plusBtn.Contains(mousePos))
-                                {
-                                    int current = _contributeAmounts[mat];
-                                    int have = _player.Inventory.CountItem(mat);
-                                    int stillNeeded = (upgradeCosts != null && upgradeCosts.ContainsKey(mat)) ? 
-                                        upgradeCosts[mat] - _interactedStructure.GetContributed(mat) : 0;
-                                    int maxAdd = Math.Min(have, stillNeeded);
-                                    if (current < maxAdd) _contributeAmounts[mat] = current + 1;
-                                    if (_contributeFocusedField == i) _contributeTypingBuffer = _contributeAmounts[mat].ToString();
-                                    clickedInside = true;
-                                }
-                                else if (numField.Contains(mousePos))
-                                {
-                                    // Commit previous field
-                                    if (_contributeFocusedField >= 0 && _contributeFocusedField < _contributeMaterialKeys.Count)
-                                    {
-                                        CommitContributeTyping();
-                                    }
-                                    _contributeFocusedField = i;
-                                    _contributeTypingBuffer = _contributeAmounts[mat].ToString();
-                                    clickedInside = true;
-                                }
-                            }
-                            
-                            // Confirm button
-                            Rectangle confirmBtn = new Rectangle(popX + 30, popY + popH - 55, 140, 40);
-                            // Cancel button
-                            Rectangle cancelBtn = new Rectangle(popX + 210, popY + popH - 55, 140, 40);
-                            
-                            if (confirmBtn.Contains(mousePos))
-                            {
-                                // Commit any typing in progress
-                                CommitContributeTyping();
-                                
-                                // Actually contribute the chosen amounts
-                                bool contributed = false;
-                                foreach (var mat in _contributeMaterialKeys)
-                                {
-                                    int amount = _contributeAmounts[mat];
-                                    if (amount > 0)
-                                    {
-                                        _player.Inventory.RemoveItems(mat, amount);
-                                        _interactedStructure.ContributeMaterial(mat, amount);
-                                        contributed = true;
-                                    }
-                                }
-                                
-                                // Check if all costs are now fully met
-                                if (contributed && upgradeCosts != null)
-                                {
-                                    bool allMet = true;
-                                    foreach (var cost in upgradeCosts)
-                                    {
-                                        if (_interactedStructure.GetContributed(cost.Key) < cost.Value)
-                                        {
-                                            allMet = false;
-                                            break;
-                                        }
-                                    }
-                                    if (allMet)
-                                    {
-                                        _interactedStructure.ClearContributions();
-                                        _interactedStructure.UpgradeRepairStage();
-                                    }
-                                }
-                                
-                                _showContributePopup = false;
-                                clickedInside = true;
-                            }
-                            else if (cancelBtn.Contains(mousePos))
-                            {
-                                _showContributePopup = false;
-                                clickedInside = true;
-                            }
-                            
-                            if (!clickedInside)
-                            {
-                                // Clicked outside the popup — unfocus field
-                                if (_contributeFocusedField >= 0)
-                                {
-                                    CommitContributeTyping();
-                                    _contributeFocusedField = -1;
-                                }
-                            }
-                            
-                            _prevMouseState = currentMouseState;
-                            return;
-                        }
                         else if (exitBtn.Contains(mousePos))
                         {
-                            _showContributePopup = false;
                             _showSpaceshipMenu = false;
                             _prevMouseState = currentMouseState;
                             return;
@@ -1535,11 +1712,87 @@ namespace AntigravityMoon
                             return;
                         }
                     }
+                    else if (_showColonyMenu)
+                    {
+                        int colWidth = 350;
+                        int colHeight = 300;
+                        int colX = (GraphicsDevice.Viewport.Width - colWidth) / 2;
+                        int colY = (GraphicsDevice.Viewport.Height - colHeight) / 2;
+                        
+                        Rectangle upgradeBtn = new Rectangle(colX + 50, colY + 120, 250, 40);
+                        Rectangle exitBtn = new Rectangle(colX + 300, colY + 10, 40, 40);
+
+                        if (exitBtn.Contains(mousePos))
+                        {
+                            _showColonyMenu = false;
+                            _prevMouseState = currentMouseState;
+                            return;
+                        }
+                        else if (_interactedStructure != null && _interactedStructure.RepairStage < 3 && upgradeBtn.Contains(mousePos) && !_showContributePopup)
+                        {
+                            var upgradeCosts = GetColonyUpgradeCosts(_interactedStructure.RepairStage);
+                            if (upgradeCosts != null)
+                            {
+                                _showContributePopup = true;
+                                _contributeAmounts.Clear();
+                                _contributeMaterialKeys.Clear();
+                                _contributeFocusedField = -1;
+                                _contributeTypingBuffer = "";
+                                foreach (var cost in upgradeCosts)
+                                {
+                                    _contributeMaterialKeys.Add(cost.Key);
+                                    _contributeAmounts[cost.Key] = 0;
+                                }
+                                _prevMouseState = currentMouseState;
+                                return;
+                            }
+                        }
+                        else if (!new Rectangle(colX, colY, colWidth, colHeight).Contains(mousePos) && !_showContributePopup)
+                        {
+                            _showColonyMenu = false;
+                            _prevMouseState = currentMouseState;
+                            return;
+                        }
+                    }
                 }
             }
             // Game World Updates (Run even if inventory is open)
             _player.Update(gameTime, _entityManager, _camera, _tileMap, !_showInventory);
             _camera.Position = _player.Position; // Follow player
+
+            // Camera bounds clamping
+            bool isUnderground = _player.Position.Y < -500_000;
+            float invZoom = 1f / _camera.Zoom;
+            float halfW = (GraphicsDevice.Viewport.Width * 0.5f) * invZoom;
+            float halfH = (GraphicsDevice.Viewport.Height * 0.5f) * invZoom;
+
+            if (isUnderground)
+            {
+                // Cave room (1024x1024 px) boundaries
+                int chunkX = (int)Math.Floor(_player.Position.X / 1024f);
+                int chunkY = (int)Math.Floor(_player.Position.Y / 1024f);
+                
+                float minCamX = chunkX * 1024f + halfW;
+                float maxCamX = chunkX * 1024f + 1024f - halfW;
+                float minCamY = chunkY * 1024f + halfH;
+                float maxCamY = chunkY * 1024f + 1024f - halfH;
+
+                float cx = (1024f < halfW * 2) ? (chunkX * 1024f + 512f) : MathHelper.Clamp(_camera.Position.X, minCamX, maxCamX);
+                float cy = (1024f < halfH * 2) ? (chunkY * 1024f + 512f) : MathHelper.Clamp(_camera.Position.Y, minCamY, maxCamY);
+                _camera.Position = new Vector2(cx, cy);
+            }
+            else
+            {
+                // Surface (6400x6400 px) boundaries
+                float minCamX = halfW;
+                float maxCamX = 6400f - halfW;
+                float minCamY = halfH;
+                float maxCamY = 6400f - halfH;
+
+                float cx = (6400f < halfW * 2) ? 3200f : MathHelper.Clamp(_camera.Position.X, minCamX, maxCamX);
+                float cy = (6400f < halfH * 2) ? 3200f : MathHelper.Clamp(_camera.Position.Y, minCamY, maxCamY);
+                _camera.Position = new Vector2(cx, cy);
+            }
 
             if (!_showInventory && _buildModeState != BuildModeState.Editing && !_showWorkbenchMenu && !_showGreenhouseMenu && !_showSpaceshipMenu && !_showLootMenu) // Wrap normal interaction logic
             {
@@ -1593,6 +1846,12 @@ namespace AntigravityMoon
                                 {
                                     // Open Spaceship Menu
                                     _showSpaceshipMenu = true;
+                                    _interactedStructure = s;
+                                    _showInventory = false;
+                                }
+                                else if (s.Type == "Colony Depot")
+                                {
+                                    _showColonyMenu = true;
                                     _interactedStructure = s;
                                     _showInventory = false;
                                 }
@@ -2161,14 +2420,39 @@ namespace AntigravityMoon
 
                 _player.Draw(_spriteBatch, _textures.ContainsKey("astronaut") ? _textures["astronaut"] : _pixelTexture, _textures);
 
-                // --- Lava Tube Cave world-space shadow ---
-                if (_inTunnel)
+                // --- Cavern world-space shadow and lighting ---
+                bool inDarkCaves = _player.Position.Y < -500_000 && _player.Position.Y > -1_500_000;
+                if (inDarkCaves)
                 {
-                    _spriteBatch.Draw(_pixelTexture,
-                        new Rectangle((int)(_camera.Position.X - viewHalfW),
-                                      (int)(_camera.Position.Y - viewHalfH),
-                                      viewHalfW * 2, viewHalfH * 2),
-                        new Color(0, 0, 0) * 0.4f); // Simple darkness overlay
+                    float radius = _player.Inventory.CountItem("Lantern") > 0 ? 300f : 80f;
+                    Vector2 playerCenter = _player.Position + new Vector2(20, 20);
+                    
+                    // Draw circular light mask
+                    _spriteBatch.Draw(_lightMaskTexture, 
+                        new Rectangle((int)(playerCenter.X - radius), (int)(playerCenter.Y - radius), (int)(radius * 2), (int)(radius * 2)), 
+                        Color.White);
+                    
+                    // Draw four black cover rectangles outside the light circle to block light leakage
+                    // Left
+                    _spriteBatch.Draw(_pixelTexture, 
+                        new Rectangle(cameraRect.Left, cameraRect.Top, (int)(playerCenter.X - radius - cameraRect.Left), cameraRect.Height), 
+                        Color.Black);
+                    // Right
+                    _spriteBatch.Draw(_pixelTexture, 
+                        new Rectangle((int)(playerCenter.X + radius), cameraRect.Top, (int)(cameraRect.Right - (playerCenter.X + radius)), cameraRect.Height), 
+                        Color.Black);
+                    // Top
+                    _spriteBatch.Draw(_pixelTexture, 
+                        new Rectangle((int)(playerCenter.X - radius), cameraRect.Top, (int)(radius * 2), (int)(playerCenter.Y - radius - cameraRect.Top)), 
+                        Color.Black);
+                    // Bottom
+                    _spriteBatch.Draw(_pixelTexture, 
+                        new Rectangle((int)(playerCenter.X - radius), (int)(playerCenter.Y + radius), (int)(radius * 2), (int)(cameraRect.Bottom - (playerCenter.Y + radius))), 
+                        Color.Black);
+                }
+                else if (_player.Position.Y < -500_000)
+                {
+                    _spriteBatch.Draw(_pixelTexture, cameraRect, Color.Black * 0.4f); // Simple darkness overlay for other caverns
                 }
             }
 
@@ -2286,20 +2570,49 @@ namespace AntigravityMoon
                     Color.Yellow * promptPulse, 2);
             }
 
-            // --- Lava Tube Cave Screen-Space Overlay ---
-            if (_inTunnel)
+            // --- Cavern Screen-Space Overlay ---
+            if (_player.Position.Y < -500_000)
             {
-                // Dark vignette
-                if (_vignetteTexture != null)
+                Color vignetteColor = Color.Transparent;
+                string labelText = "";
+                
+                if (_player.Position.Y < -3_500_000) // Radioactive Caves
                 {
-                    _spriteBatch.Draw(_vignetteTexture, GraphicsDevice.Viewport.Bounds, new Color(0, 0, 0) * 0.7f);
+                    vignetteColor = new Color(50, 255, 50) * 0.3f; // LimeGreen
+                    labelText = "RADIOACTIVE WASTES  -  CRITICAL RADIATION LEVELS!";
                 }
-                // Label
-                string tunnelLabel = "LAVA TUBE CAVE  -  RARE MATERIALS AHEAD!";
+                else if (_player.Position.Y < -2_500_000) // Volcanic Caves
+                {
+                    vignetteColor = new Color(255, 50, 0) * 0.35f; // OrangeRed
+                    labelText = "VOLCANIC CAVERNS  -  EXTREME HEAT & LAVA!";
+                }
+                else if (_player.Position.Y < -1_500_000) // Ice Caves
+                {
+                    vignetteColor = new Color(0, 150, 255) * 0.35f; // Ice Blue
+                    labelText = "FROZEN ICE CAVERNS  -  HAZARDOUS TEMPERATURES!";
+                }
+                else // Dark Caves
+                {
+                    vignetteColor = Color.Black * 0.5f;
+                    labelText = "DARK CAVERNS  -  ILLUMINATING GEAR RECOMMENDED!";
+                }
+
+                // Draw Vignette
+                if (_vignetteTexture != null && vignetteColor != Color.Transparent)
+                {
+                    _spriteBatch.Draw(_vignetteTexture, GraphicsDevice.Viewport.Bounds, vignetteColor);
+                }
+
+                // Draw Biome Label (Centered at bottom of screen)
                 float labelPulse = 0.8f + (float)Math.Sin(gameTime.TotalGameTime.TotalSeconds * 3) * 0.2f;
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, tunnelLabel,
-                    new Vector2(GraphicsDevice.Viewport.Width / 2 - 280, GraphicsDevice.Viewport.Height - 80),
-                    new Color((int)(180 * labelPulse), (int)(180 * labelPulse), (int)(180 * labelPulse)), 2);
+                int charWidth = 12; // approximate character width at scale 2
+                int totalTextWidth = labelText.Length * charWidth;
+                int labelX = Math.Max(20, (GraphicsDevice.Viewport.Width - totalTextWidth) / 2);
+                int labelY = GraphicsDevice.Viewport.Height - 80;
+                
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, labelText,
+                    new Vector2(labelX, labelY),
+                    new Color((int)(255 * labelPulse), (int)(255 * labelPulse), (int)(255 * labelPulse)), 2);
             }
 
             // Draw Menus
@@ -2336,17 +2649,39 @@ namespace AntigravityMoon
                     canUpgrade = _player.Inventory.CountItem("Crystal") >= cost;
                 }
 
+                Rectangle bagRect = new Rectangle(menuRect.X + 30, menuRect.Top + 100, 250, 60);
                 if (_player.Inventory.UpgradeLevel < 2)
                 {
-                    Rectangle btnRect = new Rectangle(menuRect.X + 50, menuRect.Top + 100, 300, 60);
-                    _spriteBatch.Draw(_pixelTexture, btnRect, canUpgrade ? Color.Blue : Color.Gray);
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "UPGRADE BAG", new Vector2(btnRect.X + 10, btnRect.Y + 20), Color.White, 2);
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, costText, new Vector2(btnRect.X + 10, btnRect.Y + 70), canUpgrade ? Color.White : Color.Red, 2);
+                    _spriteBatch.Draw(_pixelTexture, bagRect, canUpgrade ? Color.Blue : Color.Gray);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "UPGRADE BAG", new Vector2(bagRect.X + 10, bagRect.Y + 12), Color.White, 1.5f);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, costText, new Vector2(bagRect.X + 10, bagRect.Y + 36), canUpgrade ? Color.White : Color.Red, 1.2f);
                 }
                 else
                 {
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "MAX LEVEL", new Vector2(menuRect.X + 50, menuRect.Top + 100), Color.Gold, 4);
+                    _spriteBatch.Draw(_pixelTexture, bagRect, Color.DarkGoldenrod);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "BAG AT MAX LVL", new Vector2(bagRect.X + 10, bagRect.Y + 20), Color.Gold, 1.5f);
                 }
+
+                // Craft Lantern
+                bool canCraftLantern = _player.Inventory.CountItem("Rock") >= 5 && _player.Inventory.CountItem("Crystal") >= 5;
+                Rectangle lanternRect = new Rectangle(menuRect.X + 30, menuRect.Top + 220, 250, 60);
+                _spriteBatch.Draw(_pixelTexture, lanternRect, canCraftLantern ? Color.Blue : Color.Gray);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "CRAFT LANTERN", new Vector2(lanternRect.X + 10, lanternRect.Y + 12), Color.White, 1.5f);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "5 ROCK, 5 CRYSTAL", new Vector2(lanternRect.X + 10, lanternRect.Y + 36), canCraftLantern ? Color.White : Color.Red, 1.2f);
+
+                // Craft Heat Shield
+                bool canCraftHeat = _player.Inventory.CountItem("Rock") >= 10 && _player.Inventory.CountItem("Crystal") >= 10 && _player.Inventory.CountItem("Metal") >= 5;
+                Rectangle heatRect = new Rectangle(menuRect.X + 320, menuRect.Top + 100, 250, 60);
+                _spriteBatch.Draw(_pixelTexture, heatRect, canCraftHeat ? Color.Blue : Color.Gray);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "CRAFT HEAT SHIELD", new Vector2(heatRect.X + 10, heatRect.Y + 12), Color.White, 1.5f);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "10 R, 10 C, 5 M", new Vector2(heatRect.X + 10, heatRect.Y + 36), canCraftHeat ? Color.White : Color.Red, 1.2f);
+
+                // Craft Rad Shield
+                bool canCraftRad = _player.Inventory.CountItem("Rock") >= 15 && _player.Inventory.CountItem("Crystal") >= 15 && _player.Inventory.CountItem("Metal") >= 8;
+                Rectangle radRect = new Rectangle(menuRect.X + 320, menuRect.Top + 220, 250, 60);
+                _spriteBatch.Draw(_pixelTexture, radRect, canCraftRad ? Color.Blue : Color.Gray);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "CRAFT RAD SHIELD", new Vector2(radRect.X + 10, radRect.Y + 12), Color.White, 1.5f);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "15 R, 15 C, 8 M", new Vector2(radRect.X + 10, radRect.Y + 36), canCraftRad ? Color.White : Color.Red, 1.2f);
             }
             else if (_showGreenhouseMenu)
             {
@@ -2646,6 +2981,85 @@ namespace AntigravityMoon
                         // Stage indicator
                         string progressStr = $"STAGE {stage}/4";
                         PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, progressStr, new Vector2(menuX + 120, menuY + menuHeight - 30), Color.Yellow, 2);
+                    }
+                }
+            }
+            // Draw Colony Menu
+            if (_showColonyMenu)
+            {
+                int colWidth = 350;
+                int colHeight = 300;
+                int colX = (GraphicsDevice.Viewport.Width - colWidth) / 2;
+                int colY = (GraphicsDevice.Viewport.Height - colHeight) / 2;
+                
+                // Outer background (Silver/DarkGray border, Black inner)
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(colX, colY, colWidth, colHeight), Color.DarkGray);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(colX + 5, colY + 5, colWidth - 10, colHeight - 10), Color.Black);
+                
+                // Title
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "COLONY DEPOT", new Vector2(colX + 80, colY + 20), Color.White, 2);
+                
+                // Exit button
+                Rectangle exitBtn = new Rectangle(colX + 300, colY + 10, 40, 40);
+                _spriteBatch.Draw(_pixelTexture, exitBtn, Color.Red);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "X", new Vector2(exitBtn.X + 12, exitBtn.Y + 10), Color.White, 2);
+                
+                if (_interactedStructure != null)
+                {
+                    int stage = _interactedStructure.RepairStage;
+                    
+                    if (stage >= 3)
+                    {
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "COLONY FULLY BUILT!", new Vector2(colX + 50, colY + 100), Color.Cyan, 2);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "HAB DOME, REACTOR,", new Vector2(colX + 60, colY + 140), Color.LimeGreen, 1.5f);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "& DEFENSE NODE ONLINE", new Vector2(colX + 45, colY + 170), Color.LimeGreen, 1.5f);
+                    }
+                    else
+                    {
+                        var costs = GetColonyUpgradeCosts(stage);
+                        string[] stageNames = { "PROJECT: HAB DOME", "PROJECT: REACTOR", "PROJECT: DEFENSE NODE" };
+                        string stageName = stage < stageNames.Length ? stageNames[stage] : "UPGRADE";
+                        
+                        // Check if player has anything to contribute
+                        bool hasAnythingToGive = false;
+                        if (costs != null)
+                        {
+                            foreach (var cost in costs)
+                            {
+                                int contributed = _interactedStructure.GetContributed(cost.Key);
+                                int have = _player.Inventory.CountItem(cost.Key);
+                                if (have > 0 && contributed < cost.Value) { hasAnythingToGive = true; break; }
+                            }
+                        }
+                        
+                        // Upgrade Button
+                        Rectangle upgradeBtn = new Rectangle(colX + 50, colY + 120, 250, 40);
+                        _spriteBatch.Draw(_pixelTexture, upgradeBtn, hasAnythingToGive ? Color.Green : Color.Gray);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "CONTRIBUTE", new Vector2(upgradeBtn.X + 70, upgradeBtn.Y + 12), Color.Black, 1.8f);
+                        
+                        // Project name
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, stageName, new Vector2(colX + 50, colY + 80), Color.Yellow, 1.5f);
+                        
+                        // Draw costs list
+                        int costY = colY + 180;
+                        if (costs != null)
+                        {
+                            int idx = 0;
+                            foreach (var cost in costs)
+                            {
+                                int contributed = _interactedStructure.GetContributed(cost.Key);
+                                bool fulfilled = contributed >= cost.Value;
+                                Color costColor = fulfilled ? Color.LimeGreen : Color.Orange;
+                                string costStr = $"{cost.Key}: {contributed}/{cost.Value}";
+                                
+                                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, costStr, new Vector2(colX + 50, costY + idx * 22), costColor, 1.2f);
+                                idx++;
+                            }
+                        }
+                        
+                        // Stage progress
+                        string progressStr = $"PROJECT {stage + 1}/3";
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, progressStr, new Vector2(colX + 115, colY + colHeight - 35), Color.Cyan, 1.5f);
                     }
                 }
             }
@@ -3291,6 +3705,23 @@ namespace AntigravityMoon
                         }
                         _entityManager.AddEntity(s);
                     }
+                }
+
+                // Backwards compatibility: ensure Colony Depot exists
+                bool depotExists = false;
+                foreach (var entity in _entityManager.GetEntities())
+                {
+                    if (entity is Structure s && s.Type == "Colony Depot")
+                    {
+                        depotExists = true;
+                        break;
+                    }
+                }
+                if (!depotExists)
+                {
+                    Structure colonyDepot = new Structure(new Vector2(1200, 600), "Colony Depot", 160, 160);
+                    colonyDepot.RepairStage = 0;
+                    _entityManager.AddEntity(colonyDepot);
                 }
                 
                 // Unstuck Logic: Check if player is inside the Spaceship

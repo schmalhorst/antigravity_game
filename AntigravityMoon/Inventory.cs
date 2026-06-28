@@ -345,11 +345,49 @@ namespace AntigravityMoon
                     if (_items[x, y].ItemName != null)
                     {
                         string itemName = _items[x, y].ItemName;
-                        string textureKey = itemName.ToLower();
+                        string textureKey = itemName.ToLower().Replace(" ", "_");
                         
-                        if (itemTextures != null && itemTextures.ContainsKey(textureKey))
+                        Texture2D drawTex = null;
+                        Color drawTint = Color.White;
+                        
+                        if (itemName == "Ice Crystal" && itemTextures.ContainsKey("crystal"))
                         {
-                             spriteBatch.Draw(itemTextures[textureKey], new Rectangle(rect.X + 5, rect.Y + 5, cellSize - 10, cellSize - 10), Color.White);
+                            drawTex = itemTextures["crystal"];
+                            drawTint = Color.LightCyan;
+                        }
+                        else if (itemName == "Volcanic Ore" && itemTextures.ContainsKey("metal"))
+                        {
+                            drawTex = itemTextures["metal"];
+                            drawTint = Color.Red;
+                        }
+                        else if (itemName == "Radioactive Slag" && itemTextures.ContainsKey("metal"))
+                        {
+                            drawTex = itemTextures["metal"];
+                            drawTint = Color.Green;
+                        }
+                        else if (itemName == "Lantern" && itemTextures.ContainsKey("crystal"))
+                        {
+                            drawTex = itemTextures["crystal"];
+                            drawTint = Color.Yellow;
+                        }
+                        else if (itemName == "Heat Shield" && itemTextures.ContainsKey("bionic_tech"))
+                        {
+                            drawTex = itemTextures["bionic_tech"];
+                            drawTint = Color.Coral;
+                        }
+                        else if (itemName == "Rad Shield" && itemTextures.ContainsKey("bionic_tech"))
+                        {
+                            drawTex = itemTextures["bionic_tech"];
+                            drawTint = Color.LimeGreen;
+                        }
+                        else if (itemTextures != null && itemTextures.ContainsKey(textureKey))
+                        {
+                            drawTex = itemTextures[textureKey];
+                        }
+                        
+                        if (drawTex != null)
+                        {
+                             spriteBatch.Draw(drawTex, new Rectangle(rect.X + 5, rect.Y + 5, cellSize - 10, cellSize - 10), drawTint);
                         }
                         else
                         {
@@ -358,6 +396,12 @@ namespace AntigravityMoon
                             if (itemName == "Rock") color = Color.Gray;
                             else if (itemName == "Crystal") color = Color.Cyan;
                             else if (itemName == "Corn") color = Color.Yellow;
+                            else if (itemName == "Ice Crystal") color = Color.LightCyan;
+                            else if (itemName == "Volcanic Ore") color = Color.Red;
+                            else if (itemName == "Radioactive Slag") color = Color.Green;
+                            else if (itemName == "Lantern") color = Color.Yellow;
+                            else if (itemName == "Heat Shield") color = Color.Coral;
+                            else if (itemName == "Rad Shield") color = Color.LimeGreen;
                             
                             spriteBatch.Draw(pixelTexture, new Rectangle(rect.X + 5, rect.Y + 5, cellSize - 10, cellSize - 10), color);
                         }

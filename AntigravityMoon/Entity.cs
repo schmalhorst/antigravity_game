@@ -11,6 +11,7 @@ namespace AntigravityMoon
         public bool IsHarvestable { get; set; }
         public bool IsSolid { get; set; }
         public float Rotation { get; set; } = 0f;
+        public Color TintColor { get; set; } = Color.White;
 
         public Entity(Vector2 position, string type, bool movable, bool harvestable, bool solid = false)
         {
@@ -29,6 +30,15 @@ namespace AntigravityMoon
         public virtual void Draw(SpriteBatch spriteBatch, Texture2D texture, Vector2 mouseWorldPos)
         {
             Rectangle bounds = GetBounds();
+            Color color = TintColor;
+            
+            if (color == Color.White)
+            {
+                if (Type == "Ice Crystal") color = Color.LightCyan;
+                else if (Type == "Volcanic Ore") color = Color.Red;
+                else if (Type == "Radioactive Slag") color = Color.Green;
+            }
+
             if (Rotation != 0f)
             {
                 Vector2 center = new Vector2(Position.X + 16f, Position.Y + 16f); // Entity default size is 32x32
@@ -36,7 +46,7 @@ namespace AntigravityMoon
                     texture,
                     new Rectangle((int)center.X, (int)center.Y, 32, 32),
                     null,
-                    Color.White,
+                    color,
                     Rotation,
                     new Vector2(texture.Width / 2f, texture.Height / 2f),
                     SpriteEffects.None,
@@ -45,7 +55,7 @@ namespace AntigravityMoon
             }
             else
             {
-                spriteBatch.Draw(texture, bounds, Color.White);
+                spriteBatch.Draw(texture, bounds, color);
             }
             
             // Draw Label only if hovering
