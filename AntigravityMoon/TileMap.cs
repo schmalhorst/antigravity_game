@@ -178,6 +178,20 @@ namespace AntigravityMoon
                         OnSpawnEntity?.Invoke(spawnPos, resourceType);
                     }
                 }
+
+                // Spawn cave mobs (1 to 2 mobs per cave room on open floor)
+                int mobCount = chunkRandom.Next(1, 3);
+                for (int m = 0; m < mobCount; m++)
+                {
+                    int mx = chunkRandom.Next(2, ChunkSize - 2);
+                    int my = chunkRandom.Next(2, ChunkSize - 2);
+                    if ((mx != ChunkSize / 2 || my != ChunkSize / 2) && chunk.Tiles[mx, my] == 4) // only on cave floor
+                    {
+                        Vector2 mobPos = new Vector2((chunkCoord.X * ChunkSize + mx) * TileSize + TileSize / 2, (chunkCoord.Y * ChunkSize + my) * TileSize + TileSize / 2);
+                        string mobType = chunkRandom.NextDouble() < 0.65 ? "the_destroyer" : "metro_alien";
+                        OnSpawnEntity?.Invoke(mobPos, mobType);
+                    }
+                }
                 
                 return chunk;
             }
@@ -245,6 +259,7 @@ namespace AntigravityMoon
                             double spawnRoll = chunkRandom.NextDouble();
                             if (spawnRoll < 0.25) OnSpawnEntity?.Invoke(worldPos, "Rock");
                             else if (spawnRoll < 0.30) OnSpawnEntity?.Invoke(worldPos, "Crystal");
+                            else if (spawnRoll < 0.315) OnSpawnEntity?.Invoke(worldPos, "metro_alien");
                         }
                         else
                         {
@@ -254,6 +269,7 @@ namespace AntigravityMoon
                                 double spawnRoll = chunkRandom.NextDouble();
                                 if (spawnRoll < 0.02) OnSpawnEntity?.Invoke(worldPos, "Rock");
                                 else if (spawnRoll < 0.03) OnSpawnEntity?.Invoke(worldPos, "Crystal");
+                                else if (spawnRoll < 0.034) OnSpawnEntity?.Invoke(worldPos, "metro_alien");
                             }
                         }
                     }

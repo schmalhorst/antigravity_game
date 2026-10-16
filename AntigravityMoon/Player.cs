@@ -44,6 +44,18 @@ namespace AntigravityMoon
         private Vector2 _spawnPoint;
 
         public int SuitLevel { get; set; } = 1;
+        public string EquippedSuit { get; set; } = "Standard EVA Suit";
+        public string EquippedLaser { get; set; } = "Basic Mining Laser";
+        public string EquippedLantern { get; set; } = null;
+        public string EquippedAccessory { get; set; } = null;
+
+        public bool HasLantern => EquippedLantern != null || Inventory.CountItem("Lantern") > 0;
+        public bool HasHeatShield => EquippedAccessory == "Heat Shield" || Inventory.CountItem("Heat Shield") > 0 || (EquippedSuit != null && (EquippedSuit.Contains("Reinforced") || EquippedSuit.Contains("Radiation")));
+        public bool HasRadShield => EquippedAccessory == "Rad Shield" || EquippedSuit == "Radiation Suit" || (SuitLevel >= 3) || Inventory.CountItem("Rad Shield") > 0;
+        public int RadiationProtectionPercentage => (EquippedSuit == "Radiation Suit" || HasRadShield) ? 100 : (SuitLevel >= 2 ? 50 : 0);
+        public int HeatProtectionPercentage => (HasHeatShield || SuitLevel >= 2) ? 100 : 0;
+        public float LaserDamage => EquippedLaser == "Plasma Laser" ? 35f : (EquippedLaser == "Pulse Laser" ? 20f : 10f);
+        public Color LaserColor => EquippedLaser == "Plasma Laser" ? Color.MediumPurple : (EquippedLaser == "Pulse Laser" ? Color.LimeGreen : Color.Cyan);
 
         public class ActiveBuff
         {
@@ -154,10 +166,10 @@ namespace AntigravityMoon
             }
 
             // Decays & Hazards Check
-            bool hasHeatShield = Inventory.CountItem("Heat Shield") > 0;
-            bool hasRadShield = Inventory.CountItem("Rad Shield") > 0;
+            bool hasHeatShield = HasHeatShield;
+            bool hasRadShield = HasRadShield;
 
-            // Hunger Decay (Volcanic heat accelerates it, carrying Heat Shield negates it)
+            // Hunger Decay (Volcanic heat accelerates it, carrying/equipped Heat Shield or Reinforced Suit negates it)
             if (movement != Vector2.Zero || (inVolcanicCaves && !hasHeatShield))
             {
                 float currentHungerDecayRate = _hungerDecayRate * (1.0f - (GetTotalHungerBuff() / 100f));
@@ -174,10 +186,14 @@ namespace AntigravityMoon
                 }
             }
 
-            // Radioactive Damage (carrying Rad Shield negates it)
-            if (inRadioactiveCaves && !hasRadShield)
+            // Radioactive Damage (Hazard resistance reduces/negates damage)
+            if (inRadioactiveCaves)
             {
-                TakeDamage(5f * dt);
+                if (RadiationProtectionPercentage < 100)
+                {
+                    float radDamageMultiplier = (100 - RadiationProtectionPercentage) / 100f;
+                    TakeDamage(5f * radDamageMultiplier * dt);
+                }
             }
 
             // Lava Tile Check (Standing on tile 7 deals 15% damage/sec)
@@ -661,6 +677,127 @@ namespace AntigravityMoon
             Health = 100f;
             Oxygen = 100f;
             LastDeathCause = DeathCause.None;
+        }
+
+        // Equipment System Methods
+        public bool IsEquippable(string item)
+        {
+            if (string.IsNullOrEmpty(item)) return false;
+            return item == "Lantern" ||
+                   item == "Basic Mining Laser" || item == "Pulse Laser" || item == "Plasma Laser" ||
+                   item == "Standard EVA Suit" || item == "Reinforced Suit" || item == "Radiation Suit" ||
+                   item == "Heat Shield" || item == "Rad Shield";
+        }
+
+        public string GetEquipSlotForItem(string item)
+        {
+            if (item == "Lantern") return "Lantern";
+            if (item == "Basic Mining Laser" || item == "Pulse Laser" || item == "Plasma Laser") return "Laser";
+            if (item == "Standard EVA Suit" || item == "Reinforced Suit" || item == "Radiation Suit") return "Suit";
+            if (item == "Heat Shield" || item == "Rad Shield") return "Accessory";
+            return null;
+        }
+
+        public bool EquipItemFromInventory(int gridX, int gridY)
+        {
+            string item = Inventory.GetItem(gridX, gridY);
+            if (string.IsNullOrEmpty(item) || !IsEquippable(item)) return false;
+
+            string slot = GetEquipSlotForItem(item);
+            string previousItem = null;
+
+            switch (slot)
+            {
+                case "Lantern":
+                    previousItem = EquippedLantern;
+                    EquippedLantern = item;
+                    break;
+                case "Laser":
+                    previousItem = (EquippedLaser != "Basic Mining Laser") ? EquippedLaser : null;
+                    EquippedLaser = item;
+                    break;
+                case "Suit":
+                    previousItem = (EquippedSuit != "Standard EVA Suit") ? EquippedSuit : null;
+                    EquippedSuit = item;
+                    if (item == "Radiation Suit") SuitLevel = Math.Max(SuitLevel, 3);
+                    else if (item == "Reinforced Suit") SuitLevel = Math.Max(SuitLevel, 2);
+                    else SuitLevel = 1;
+                    break;
+                case "Accessory":
+                    previousItem = EquippedAccessory;
+                    EquippedAccessory = item;
+                    break;
+                default:
+                    return false;
+            }
+
+            // Remove 1 copy of the item from the inventory slot
+            Inventory.RemoveItem(gridX, gridY);
+
+            // If there was an existing non-default item equipped, put it back into inventory
+            if (previousItem != null)
+            {
+                if (Inventory.GetItem(gridX, gridY) == null)
+                {
+                    Inventory.SetItem(gridX, gridY, previousItem, 1);
+                }
+                else
+                {
+                    Inventory.AddItem(previousItem);
+                }
+            }
+
+            return true;
+        }
+
+        public bool UnequipSlot(string slot)
+        {
+            string unequipped = null;
+            switch (slot)
+            {
+                case "Lantern":
+                    if (EquippedLantern != null)
+                    {
+                        unequipped = EquippedLantern;
+                        if (!Inventory.CanAddItem(unequipped)) return false;
+                        Inventory.AddItem(unequipped);
+                        EquippedLantern = null;
+                        return true;
+                    }
+                    break;
+                case "Accessory":
+                    if (EquippedAccessory != null)
+                    {
+                        unequipped = EquippedAccessory;
+                        if (!Inventory.CanAddItem(unequipped)) return false;
+                        Inventory.AddItem(unequipped);
+                        EquippedAccessory = null;
+                        return true;
+                    }
+                    break;
+                case "Laser":
+                    if (EquippedLaser != null && EquippedLaser != "Basic Mining Laser")
+                    {
+                        unequipped = EquippedLaser;
+                        if (!Inventory.CanAddItem(unequipped)) return false;
+                        Inventory.AddItem(unequipped);
+                        EquippedLaser = "Basic Mining Laser";
+                        return true;
+                    }
+                    break;
+                case "Suit":
+                    if (EquippedSuit != null && EquippedSuit != "Standard EVA Suit")
+                    {
+                        unequipped = EquippedSuit;
+                        if (!Inventory.CanAddItem(unequipped)) return false;
+                        Inventory.AddItem(unequipped);
+                        EquippedSuit = "Standard EVA Suit";
+                        SuitLevel = 1;
+                        return true;
+                    }
+                    break;
+            }
+            return false;
         }
     }
 }

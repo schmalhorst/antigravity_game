@@ -380,6 +380,26 @@ namespace AntigravityMoon
                             drawTex = itemTextures["bionic_tech"];
                             drawTint = Color.LimeGreen;
                         }
+                        else if (itemName == "Pulse Laser" && itemTextures.ContainsKey("bionic_tech"))
+                        {
+                            drawTex = itemTextures["bionic_tech"];
+                            drawTint = Color.LimeGreen;
+                        }
+                        else if (itemName == "Plasma Laser" && itemTextures.ContainsKey("bionic_tech"))
+                        {
+                            drawTex = itemTextures["bionic_tech"];
+                            drawTint = Color.MediumPurple;
+                        }
+                        else if (itemName == "Reinforced Suit" && itemTextures.ContainsKey("astronaut"))
+                        {
+                            drawTex = itemTextures["astronaut"];
+                            drawTint = Color.DarkOrange;
+                        }
+                        else if (itemName == "Radiation Suit" && itemTextures.ContainsKey("astronaut"))
+                        {
+                            drawTex = itemTextures["astronaut"];
+                            drawTint = Color.GreenYellow;
+                        }
                         else if (itemTextures != null && itemTextures.ContainsKey(textureKey))
                         {
                             drawTex = itemTextures[textureKey];
@@ -402,6 +422,10 @@ namespace AntigravityMoon
                             else if (itemName == "Lantern") color = Color.Yellow;
                             else if (itemName == "Heat Shield") color = Color.Coral;
                             else if (itemName == "Rad Shield") color = Color.LimeGreen;
+                            else if (itemName == "Pulse Laser") color = Color.LimeGreen;
+                            else if (itemName == "Plasma Laser") color = Color.MediumPurple;
+                            else if (itemName == "Reinforced Suit") color = Color.DarkOrange;
+                            else if (itemName == "Radiation Suit") color = Color.GreenYellow;
                             
                             spriteBatch.Draw(pixelTexture, new Rectangle(rect.X + 5, rect.Y + 5, cellSize - 10, cellSize - 10), color);
                         }

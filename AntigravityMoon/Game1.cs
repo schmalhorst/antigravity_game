@@ -68,7 +68,15 @@ namespace AntigravityMoon
             // Subscribe to entity spawning from TileMap
             _tileMap.OnSpawnEntity += (position, entityType) =>
             {
-                _entityManager.AddEntity(new Entity(position, entityType, true, true, true));
+                if (entityType == "metro_alien" || entityType == "the_destroyer" || entityType == "Alien")
+                {
+                    string mobType = entityType == "the_destroyer" ? "the_destroyer" : "metro_alien";
+                    _aliens.Add(new Alien(position, mobType));
+                }
+                else
+                {
+                    _entityManager.AddEntity(new Entity(position, entityType, true, true, true));
+                }
             };
 
             Window.ClientSizeChanged += (s, e) =>
@@ -379,13 +387,19 @@ namespace AntigravityMoon
         
         // Alien Logic
         private List<Alien> _aliens = new List<Alien>();
-        private float _surfaceAlienTimer = 0f;
-        private bool _surfaceAlienSpawned = false;
-        private float _caveAlienTimer = 0f;
-        private bool _caveAlienSpawned = false;
+        private float _alienSpawnTimer = 0f;
+        private const float AlienSpawnInterval = 15f;
+        private const int MaxSurfaceAliens = 8;
+        private const int MaxCaveAliens = 6;
         
         // Death Screen
         private bool _showDeathScreen = false;
+        private bool _showCharacterScreen = false;
+
+        // Tabbed Panel
+        private enum PanelTab { Inventory, Loadout }
+        private PanelTab _activeTab = PanelTab.Inventory;
+        private int _quickbarSelectedSlot = 0; // 0-4 for slots 1-5
 
         // Laser System
         private struct Laser
@@ -394,6 +408,7 @@ namespace AntigravityMoon
             public Vector2 End;
             public float Duration;
             public float MaxDuration;
+            public Color Color;
         }
         private List<Laser> _lasers = new List<Laser>();
 
@@ -642,7 +657,25 @@ namespace AntigravityMoon
             // Smooth lerp towards target zoom
             _camera.Zoom += (_targetZoom - _camera.Zoom) * Math.Min(dt * 12f, 1f);
 
-            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || (currentKeyboardState.IsKeyDown(Keys.Escape) && !_showContributePopup))
+            if (currentKeyboardState.IsKeyDown(Keys.Escape) && !_prevKeyboardState.IsKeyDown(Keys.Escape) && !_showContributePopup)
+            {
+                if (_showCharacterScreen || _showInventory || _showWorkbenchMenu || _showGreenhouseMenu || _showSpaceshipMenu || _showColonyMenu || _showLootMenu)
+                {
+                    _showCharacterScreen = false;
+                    _showInventory = false;
+                    _showWorkbenchMenu = false;
+                    _showGreenhouseMenu = false;
+                    _showSpaceshipMenu = false;
+                    _showColonyMenu = false;
+                    _showLootMenu = false;
+                    _showInventoryContextMenu = false;
+                }
+                else
+                {
+                    Exit();
+                }
+            }
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed)
                 Exit();
 
             // Fullscreen Toggle
@@ -807,10 +840,7 @@ namespace AntigravityMoon
                         _showDeathScreen = false;
                         _player.DoRespawn();
                         // Reset game state for respawn
-                        _surfaceAlienSpawned = false;
-                        _surfaceAlienTimer = 0f;
-                        _caveAlienSpawned = false;
-                        _caveAlienTimer = 0f;
+                        _alienSpawnTimer = 0f;
                         _aliens.Clear();
                   }
                 }
@@ -927,14 +957,56 @@ namespace AntigravityMoon
 
             if (currentKeyboardState.IsKeyDown(Keys.I) && !_prevKeyboardState.IsKeyDown(Keys.I))
             {
-                _showInventory = !_showInventory;
-                if (_showInventory)
+                if (_showInventory && _activeTab == PanelTab.Inventory)
                 {
-                    _buildModeState = BuildModeState.None; // Close Build Menu
+                    // Close panel entirely
+                    _showInventory = false;
+                    _showCharacterScreen = false;
+                }
+                else
+                {
+                    // Open on Inventory tab
+                    _showInventory = true;
+                    _activeTab = PanelTab.Inventory;
+                    _showCharacterScreen = false;
+                    _buildModeState = BuildModeState.None;
                     _showWorkbenchMenu = false;
                     _showGreenhouseMenu = false;
                     _showSpaceshipMenu = false;
                     _showInventoryContextMenu = false;
+                }
+            }
+
+            if (currentKeyboardState.IsKeyDown(Keys.C) && !_prevKeyboardState.IsKeyDown(Keys.C))
+            {
+                if (_showInventory && _activeTab == PanelTab.Loadout)
+                {
+                    // Close panel entirely
+                    _showInventory = false;
+                    _showCharacterScreen = false;
+                }
+                else
+                {
+                    // Open on Loadout tab
+                    _showInventory = true;
+                    _activeTab = PanelTab.Loadout;
+                    _showCharacterScreen = true;
+                    _buildModeState = BuildModeState.None;
+                    _showWorkbenchMenu = false;
+                    _showGreenhouseMenu = false;
+                    _showSpaceshipMenu = false;
+                    _showColonyMenu = false;
+                    _showInventoryContextMenu = false;
+                }
+            }
+
+            // Quickbar slot selection: keys 1-5
+            for (int qs = 0; qs < 5; qs++)
+            {
+                Keys qKey = Keys.D1 + qs;
+                if (currentKeyboardState.IsKeyDown(qKey) && !_prevKeyboardState.IsKeyDown(qKey))
+                {
+                    _quickbarSelectedSlot = qs;
                 }
             }
 
@@ -1063,14 +1135,14 @@ namespace AntigravityMoon
                 if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
                 {
                     bool isFood = _crops.Exists(c => c.Id == _contextMenuItem);
-                    int menuHeight = isFood ? 50 : 25;
+                    bool isEquippable = _player.IsEquippable(_contextMenuItem);
                     
-                    Rectangle eatRect = isFood ? new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, 60, 25) : Rectangle.Empty;
-                    Rectangle dropRect = isFood ? 
-                        new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y + 25, 60, 25) : 
-                        new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, 60, 25);
+                    Rectangle actionRect = (isFood || isEquippable) ? new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, 65, 25) : Rectangle.Empty;
+                    Rectangle dropRect = (isFood || isEquippable) ? 
+                        new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y + 25, 65, 25) : 
+                        new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, 65, 25);
                     
-                    if (isFood && eatRect.Contains(currentMouseState.Position))
+                    if (isFood && actionRect.Contains(currentMouseState.Position))
                     {
                         // Eat
                         if (_contextMenuItem != null)
@@ -1085,6 +1157,13 @@ namespace AntigravityMoon
                         }
                         _showInventoryContextMenu = false;
                     }
+                    else if (isEquippable && actionRect.Contains(currentMouseState.Position))
+                    {
+                        // Equip
+                        _player.EquipItemFromInventory((int)_contextMenuItemGridPos.X, (int)_contextMenuItemGridPos.Y);
+                        _showCharacterScreen = true; // Reveal character screen
+                        _showInventoryContextMenu = false;
+                    }
                     else if (dropRect.Contains(currentMouseState.Position))
                     {
                         // Drop
@@ -1092,7 +1171,6 @@ namespace AntigravityMoon
                         {
                             _player.Inventory.RemoveItem((int)_contextMenuItemGridPos.X, (int)_contextMenuItemGridPos.Y);
                             // Spawn item entity at player position
-                            // Offset slightly so it's not directly under player
                             Vector2 dropPos = _player.Position + new Vector2(0, 32);
                             _entityManager.AddEntity(new Entity(dropPos, _contextMenuItem, true, true));
                         }
@@ -1142,21 +1220,88 @@ namespace AntigravityMoon
                     }
                 }
                 
-                // Sort Button Logic
-                int invWidthVal = _player.Inventory.Cols * 45 + 5; // Use same calc as Draw
+                // Sort Button (inside Inventory tab)
+                int invWidthVal = _player.Inventory.Cols * 45 + 5;
                 Rectangle sortBtn = new Rectangle((int)invPos.X + invWidthVal - 60, (int)invPos.Y - 25, 60, 20);
-                
+
+                // Tab buttons at panel top
+                int panelW = Math.Max(invWidthVal, 460);
+                int panelX = (GraphicsDevice.Viewport.Width - panelW) / 2;
+                int panelY = (int)invPos.Y - 50;
+                Rectangle invTabBtn  = new Rectangle(panelX, panelY, panelW / 2, 28);
+                Rectangle loadTabBtn = new Rectangle(panelX + panelW / 2, panelY, panelW / 2, 28);
+
                 if (currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
                 {
-                    if (sortBtn.Contains(currentMouseState.Position))
+                    if (invTabBtn.Contains(currentMouseState.Position))
+                    {
+                        _activeTab = PanelTab.Inventory;
+                        _showCharacterScreen = false;
+                    }
+                    else if (loadTabBtn.Contains(currentMouseState.Position))
+                    {
+                        _activeTab = PanelTab.Loadout;
+                        _showCharacterScreen = true;
+                    }
+                    else if (_activeTab == PanelTab.Inventory && sortBtn.Contains(currentMouseState.Position))
                     {
                         _player.Inventory.MergeAndSort();
                     }
-                    // Left Click Outside to Close (excluding sort button)
-                    else if (!inventoryRect.Contains(currentMouseState.Position))
+                    // Close panel on click outside (only if loadout tab is NOT open)
+                    else if (!inventoryRect.Contains(currentMouseState.Position) && !_showCharacterScreen)
                     {
                         _showInventory = false;
                     }
+                }
+            }
+
+            // Character Screen (Loadout Tab) Input Logic
+            if (_showCharacterScreen && currentMouseState.LeftButton == ButtonState.Pressed && _prevMouseState.LeftButton == ButtonState.Released)
+            {
+                int winW = 860;
+                int winH = 560;
+                int winX = (GraphicsDevice.Viewport.Width - winW) / 2;
+                int winY = Math.Max(30, (GraphicsDevice.Viewport.Height - winH - 140) / 2);
+                Rectangle winRect = new Rectangle(winX, winY, winW, winH);
+
+                // Close Button → close entire panel
+                Rectangle closeBtn = new Rectangle(winRect.Right - 38, winRect.Top + 10, 26, 26);
+                if (closeBtn.Contains(currentMouseState.Position))
+                {
+                    _showCharacterScreen = false;
+                    _showInventory = false;
+                }
+
+                int rightX = winX + 335;
+                int rightY = winY + 60;
+                int rightW = winW - 360;
+
+                // Unequip Suit
+                Rectangle suitUnequip = new Rectangle(rightX + rightW - 85, rightY + 26 + 20, 75, 28);
+                if (_player.EquippedSuit != "Standard EVA Suit" && suitUnequip.Contains(currentMouseState.Position))
+                {
+                    if (!_player.UnequipSlot("Suit")) _inventoryFullTimer = 2.0f;
+                }
+
+                // Unequip Laser
+                Rectangle laserUnequip = new Rectangle(rightX + rightW - 85, rightY + 110 + 20, 75, 28);
+                if (_player.EquippedLaser != "Basic Mining Laser" && laserUnequip.Contains(currentMouseState.Position))
+                {
+                    if (!_player.UnequipSlot("Laser")) _inventoryFullTimer = 2.0f;
+                }
+
+                // Unequip Lantern
+                Rectangle lanternUnequip = new Rectangle(rightX + rightW - 85, rightY + 194 + 20, 75, 28);
+                if (_player.EquippedLantern != null && lanternUnequip.Contains(currentMouseState.Position))
+                {
+                    if (!_player.UnequipSlot("Lantern")) _inventoryFullTimer = 2.0f;
+                }
+
+                // Unequip Accessory
+                Rectangle auxUnequip = new Rectangle(rightX + rightW - 85, rightY + 278 + 20, 75, 28);
+                if (_player.EquippedAccessory != null && auxUnequip.Contains(currentMouseState.Position))
+                {
+                    if (!_player.UnequipSlot("Accessory")) _inventoryFullTimer = 2.0f;
                 }
             }
 
@@ -1513,10 +1658,14 @@ namespace AntigravityMoon
                     if (_showWorkbenchMenu)
                     {
                         // Upgrade Backpack Button
-                        Rectangle bagRect = new Rectangle(menuRect.X + 30, menuRect.Top + 100, 250, 60);
-                        Rectangle lanternRect = new Rectangle(menuRect.X + 30, menuRect.Top + 220, 250, 60);
-                        Rectangle heatRect = new Rectangle(menuRect.X + 320, menuRect.Top + 100, 250, 60);
-                        Rectangle radRect = new Rectangle(menuRect.X + 320, menuRect.Top + 220, 250, 60);
+                        Rectangle bagRect = new Rectangle(menuRect.X + 30, menuRect.Top + 75, 260, 60);
+                        Rectangle heatRect = new Rectangle(menuRect.X + 330, menuRect.Top + 75, 260, 60);
+                        Rectangle lanternRect = new Rectangle(menuRect.X + 30, menuRect.Top + 145, 260, 60);
+                        Rectangle radRect = new Rectangle(menuRect.X + 330, menuRect.Top + 145, 260, 60);
+                        Rectangle pulseLaserRect = new Rectangle(menuRect.X + 30, menuRect.Top + 215, 260, 60);
+                        Rectangle reinfSuitRect = new Rectangle(menuRect.X + 330, menuRect.Top + 215, 260, 60);
+                        Rectangle plasmaLaserRect = new Rectangle(menuRect.X + 30, menuRect.Top + 285, 260, 60);
+                        Rectangle radSuitRect = new Rectangle(menuRect.X + 330, menuRect.Top + 285, 260, 60);
                         
                         if (bagRect.Contains(mousePos))
                         {
@@ -1575,6 +1724,74 @@ namespace AntigravityMoon
                                     _player.Inventory.RemoveItems("Crystal", 15);
                                     _player.Inventory.RemoveItems("Metal", 8);
                                     _player.Inventory.AddItem("Rad Shield");
+                                }
+                                else
+                                {
+                                    _inventoryFullTimer = 2.0f;
+                                }
+                            }
+                        }
+                        else if (pulseLaserRect.Contains(mousePos))
+                        {
+                            if (_player.Inventory.CountItem("Rock") >= 10 && _player.Inventory.CountItem("Crystal") >= 10 && _player.Inventory.CountItem("Metal") >= 10)
+                            {
+                                if (_player.Inventory.CanAddItem("Pulse Laser"))
+                                {
+                                    _player.Inventory.RemoveItems("Rock", 10);
+                                    _player.Inventory.RemoveItems("Crystal", 10);
+                                    _player.Inventory.RemoveItems("Metal", 10);
+                                    _player.Inventory.AddItem("Pulse Laser");
+                                }
+                                else
+                                {
+                                    _inventoryFullTimer = 2.0f;
+                                }
+                            }
+                        }
+                        else if (reinfSuitRect.Contains(mousePos))
+                        {
+                            if (_player.Inventory.CountItem("Rock") >= 15 && _player.Inventory.CountItem("Crystal") >= 10 && _player.Inventory.CountItem("Metal") >= 15)
+                            {
+                                if (_player.Inventory.CanAddItem("Reinforced Suit"))
+                                {
+                                    _player.Inventory.RemoveItems("Rock", 15);
+                                    _player.Inventory.RemoveItems("Crystal", 10);
+                                    _player.Inventory.RemoveItems("Metal", 15);
+                                    _player.Inventory.AddItem("Reinforced Suit");
+                                }
+                                else
+                                {
+                                    _inventoryFullTimer = 2.0f;
+                                }
+                            }
+                        }
+                        else if (plasmaLaserRect.Contains(mousePos))
+                        {
+                            if (_player.Inventory.CountItem("Crystal") >= 15 && _player.Inventory.CountItem("Metal") >= 15 && _player.Inventory.CountItem("Volcanic Ore") >= 5)
+                            {
+                                if (_player.Inventory.CanAddItem("Plasma Laser"))
+                                {
+                                    _player.Inventory.RemoveItems("Crystal", 15);
+                                    _player.Inventory.RemoveItems("Metal", 15);
+                                    _player.Inventory.RemoveItems("Volcanic Ore", 5);
+                                    _player.Inventory.AddItem("Plasma Laser");
+                                }
+                                else
+                                {
+                                    _inventoryFullTimer = 2.0f;
+                                }
+                            }
+                        }
+                        else if (radSuitRect.Contains(mousePos))
+                        {
+                            if (_player.Inventory.CountItem("Crystal") >= 15 && _player.Inventory.CountItem("Metal") >= 20 && _player.Inventory.CountItem("Radioactive Slag") >= 5)
+                            {
+                                if (_player.Inventory.CanAddItem("Radiation Suit"))
+                                {
+                                    _player.Inventory.RemoveItems("Crystal", 15);
+                                    _player.Inventory.RemoveItems("Metal", 20);
+                                    _player.Inventory.RemoveItems("Radioactive Slag", 5);
+                                    _player.Inventory.AddItem("Radiation Suit");
                                 }
                                 else
                                 {
@@ -1932,35 +2149,17 @@ namespace AntigravityMoon
 
                 // Alien Spawning Logic
                 bool inCave = _player.Position.Y < -500_000;
-                
-                if (!inCave && !_surfaceAlienSpawned)
+                _alienSpawnTimer += dt;
+                if (_alienSpawnTimer >= AlienSpawnInterval)
                 {
-                    _surfaceAlienTimer += dt;
-                    if (_surfaceAlienTimer >= 30f) // 30s on surface
-                    {
-                        _surfaceAlienSpawned = true;
-                        Vector2 spawnPos = _player.Position + new Vector2(400, 0); // 400px to the right
-                        _aliens.Add(new Alien(spawnPos, "metro_alien"));
-                    }
+                    _alienSpawnTimer = 0f;
+                    TrySpawnRandomAlien(inCave);
                 }
-                
-                if (inCave && !_caveAlienSpawned)
-                {
-                    _caveAlienTimer += dt;
-                    if (_caveAlienTimer >= 5f) // 5s underground
-                    {
-                        _caveAlienSpawned = true;
-                        Vector2 spawnPos = _player.Position + new Vector2(-400, 0); 
-                        _aliens.Add(new Alien(spawnPos, "the_destroyer"));
-                    }
-                }
-
-
 
             // Update Aliens
                 for (int i = _aliens.Count - 1; i >= 0; i--)
                 {
-                    _aliens[i].Update(dt, _player, _entityManager);
+                    _aliens[i].Update(dt, _player, _entityManager, _tileMap);
                     if (_aliens[i].IsDead)
                     {
                         // Spawn Electricity Particles
@@ -2238,6 +2437,96 @@ namespace AntigravityMoon
             }
         }
 
+        private void TrySpawnRandomAlien(bool inCave)
+        {
+            // Count current living aliens in the current realm
+            int currentCount = 0;
+            foreach (var a in _aliens)
+            {
+                if (a.IsDead) continue;
+                bool alienInCave = a.Position.Y < -500_000;
+                if (alienInCave == inCave)
+                {
+                    currentCount++;
+                }
+            }
+
+            int maxAllowed = inCave ? MaxCaveAliens : MaxSurfaceAliens;
+            if (currentCount >= maxAllowed) return;
+
+            // Attempt to find a suitable random location around the player
+            for (int attempt = 0; attempt < 15; attempt++)
+            {
+                // Random distance: between 400 and 750 pixels away (periphery / off-screen)
+                float dist = (float)(_random.NextDouble() * 350 + 400);
+                float angle = (float)(_random.NextDouble() * Math.PI * 2);
+                Vector2 candidatePos = _player.Position + new Vector2((float)Math.Cos(angle), (float)Math.Sin(angle)) * dist;
+
+                if (!inCave)
+                {
+                    // Surface bounds check: within map limits [64, 6336]
+                    if (candidatePos.X < 64 || candidatePos.X > 6336 || candidatePos.Y < 64 || candidatePos.Y > 6336)
+                        continue;
+
+                    // Avoid player's base / spaceship hub (560, 284) and colony depot (1200, 600)
+                    if (Vector2.Distance(candidatePos, new Vector2(560, 284)) < 350f)
+                        continue;
+                    if (Vector2.Distance(candidatePos, new Vector2(1200, 600)) < 250f)
+                        continue;
+
+                    // Avoid spawning on crater rim walls (tile 2)
+                    int tileX = (int)Math.Floor(candidatePos.X / TileMap.TileSize);
+                    int tileY = (int)Math.Floor(candidatePos.Y / TileMap.TileSize);
+                    int tileType = _tileMap.GetTile(tileX, tileY);
+                    if (tileType == 2) continue;
+
+                    // Check solid entity collision
+                    Rectangle candidateRect = new Rectangle((int)candidatePos.X, (int)candidatePos.Y, 128, 64);
+                    bool blocked = false;
+                    foreach (var entity in _entityManager.GetEntities())
+                    {
+                        if (entity.IsSolid && candidateRect.Intersects(entity.GetBounds()))
+                        {
+                            blocked = true;
+                            break;
+                        }
+                    }
+                    if (blocked) continue;
+
+                    _aliens.Add(new Alien(candidatePos, "metro_alien"));
+                    break;
+                }
+                else
+                {
+                    // Cave room spawn
+                    int tileX = (int)Math.Floor(candidatePos.X / TileMap.TileSize);
+                    int tileY = (int)Math.Floor(candidatePos.Y / TileMap.TileSize);
+                    int tileType = _tileMap.GetTile(tileX, tileY);
+                    // Must be floor tile (4), not wall (5), not rope (6), not lava (7)
+                    if (tileType != 4) continue;
+
+                    string mobType = _random.NextDouble() < 0.65 ? "the_destroyer" : "metro_alien";
+                    int width = mobType == "the_destroyer" ? 64 : 128;
+                    int height = 64;
+                    Rectangle candidateRect = new Rectangle((int)candidatePos.X, (int)candidatePos.Y, width, height);
+
+                    bool blocked = false;
+                    foreach (var entity in _entityManager.GetEntities())
+                    {
+                        if (entity.IsSolid && candidateRect.Intersects(entity.GetBounds()))
+                        {
+                            blocked = true;
+                            break;
+                        }
+                    }
+                    if (blocked) continue;
+
+                    _aliens.Add(new Alien(candidatePos, mobType));
+                    break;
+                }
+            }
+        }
+
         private Texture2D GenerateVignetteTexture(int size)
         {
             Texture2D tex = new Texture2D(GraphicsDevice, size, size);
@@ -2463,24 +2752,48 @@ namespace AntigravityMoon
                 // Draw UI (Inventory) separately without camera transform (Screen Space)
                 _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             
+            // === QUICKBAR (always visible) ===
+            DrawQuickbar(gameTime);
+
             if (_showInventory)
             {
-                _player.Inventory.Draw(_spriteBatch, _pixelTexture, _textures, GetInventoryPosition());
-                
                 Vector2 invPos = GetInventoryPosition();
-                
-                // Draw Info
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"BACKPACK LVL: {_player.Inventory.UpgradeLevel}", new Vector2(invPos.X, invPos.Y - 65), Color.Cyan, 2);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"SUIT LVL: {_player.SuitLevel}", new Vector2(invPos.X + 240, invPos.Y - 65), Color.Orange, 2);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"POS: [ {(int)_player.Position.X}, {(int)_player.Position.Y} ]", new Vector2(invPos.X, invPos.Y - 40), Color.Yellow, 2);
+                int invWidthVal = _player.Inventory.Cols * 45 + 5;
+                int panelW = Math.Max(invWidthVal, 460);
+                int panelX = (GraphicsDevice.Viewport.Width - panelW) / 2;
+                int panelY = (int)invPos.Y - 50;
 
-                // Draw Sort Button
-                int invWidth = _player.Inventory.Cols * 45 + 5;
-                Rectangle sortBtn = new Rectangle((int)invPos.X + invWidth - 60, (int)invPos.Y - 25, 60, 20);
-                
-                _spriteBatch.Draw(_pixelTexture, sortBtn, Color.Gray);
-                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "SORT", new Vector2(sortBtn.X + 5, sortBtn.Y - 3), Color.White, 2);
+                // Tab bar background
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(panelX, panelY, panelW, 28), Color.Black * 0.85f);
+
+                // INVENTORY tab
+                bool invActive = _activeTab == PanelTab.Inventory;
+                Color invTabColor = invActive ? new Color(30, 120, 220) : new Color(40, 40, 60);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(panelX, panelY, panelW / 2, 28), invTabColor);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "[ INVENTORY ]",
+                    new Vector2(panelX + 10, panelY + 6), invActive ? Color.White : Color.Gray, 1.8f);
+
+                // LOADOUT tab
+                bool loadActive = _activeTab == PanelTab.Loadout;
+                Color loadTabColor = loadActive ? new Color(20, 140, 100) : new Color(30, 50, 40);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(panelX + panelW / 2, panelY, panelW / 2, 28), loadTabColor);
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "[ LOADOUT ]",
+                    new Vector2(panelX + panelW / 2 + 10, panelY + 6), loadActive ? Color.White : Color.Gray, 1.8f);
+
+                // Separator line under active tab
+                Color sepLine = invActive ? new Color(30, 120, 220) : new Color(20, 140, 100);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(panelX, panelY + 26, panelW, 2), sepLine);
+
+                if (_activeTab == PanelTab.Inventory)
+                {
+                    DrawInventoryTab(invPos);
+                }
+                else
+                {
+                    DrawLoadoutTab(gameTime);
+                }
             }
+
 
             // Draw Health Bar
             PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "HEALTH", new Vector2(20, 20), Color.White, 2);
@@ -3192,21 +3505,38 @@ namespace AntigravityMoon
             // Draw Inventory Context Menu
             if (_showInventoryContextMenu)
             {
-                bool isFood = _crops.Exists(c => c.Id == _contextMenuItem);
-                int menuHeight = isFood ? 50 : 25;
-                
-                _spriteBatch.Draw(_pixelTexture, new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, 60, menuHeight), Color.White);
-                
+                bool isFood       = _crops.Exists(c => c.Id == _contextMenuItem);
+                bool isEquippable = _player.IsEquippable(_contextMenuItem);
+                int numOptions    = 1 + (isFood || isEquippable ? 1 : 0); // action + drop
+                int menuH         = numOptions * 25;
+                int menuW         = 70;
+
+                _spriteBatch.Draw(_pixelTexture,
+                    new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, menuW, menuH),
+                    new Color(20, 22, 30));
+                _spriteBatch.Draw(_pixelTexture,
+                    new Rectangle((int)_contextMenuPos.X, (int)_contextMenuPos.Y, menuW, 2),
+                    new Color(60, 140, 255));
+
+                int optY = (int)_contextMenuPos.Y + 4;
+
                 if (isFood)
                 {
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "EAT", new Vector2(_contextMenuPos.X + 5, _contextMenuPos.Y + 5), Color.Black, 2);
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "DROP", new Vector2(_contextMenuPos.X + 5, _contextMenuPos.Y + 30), Color.Red, 2);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "EAT",
+                        new Vector2(_contextMenuPos.X + 5, optY), Color.LimeGreen, 2);
+                    optY += 25;
                 }
-                else
+                else if (isEquippable)
                 {
-                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "DROP", new Vector2(_contextMenuPos.X + 5, _contextMenuPos.Y + 5), Color.Red, 2);
+                    PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "EQUIP",
+                        new Vector2(_contextMenuPos.X + 5, optY), Color.Cyan, 2);
+                    optY += 25;
                 }
+
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "DROP",
+                    new Vector2(_contextMenuPos.X + 5, optY), Color.Red, 2);
             }
+
 
             // Draw Death Screen
             if (_showDeathScreen)
@@ -3542,6 +3872,256 @@ namespace AntigravityMoon
             float angle = (float)Math.Atan2(edge.Y, edge.X);
             spriteBatch.Draw(texture, new Rectangle((int)start.X, (int)start.Y, (int)edge.Length(), thickness), null, color, angle, new Vector2(0, 0.5f), SpriteEffects.None, 0);
         }
+
+        // ───────────────────────────── QUICKBAR ─────────────────────────────
+        private void DrawQuickbar(GameTime gameTime)
+        {
+            int qSlots = Math.Min(5, _player.Inventory.Cols);
+            if (qSlots == 0) return;
+
+            int cellSize  = 48;
+            int padding   = 4;
+            int totalW    = qSlots * (cellSize + padding) + padding;
+            int qX        = (GraphicsDevice.Viewport.Width - totalW) / 2;
+            int qY        = GraphicsDevice.Viewport.Height - cellSize - 12;
+
+            // Background panel
+            float panelAlpha = _showInventory ? 0.4f : 0.75f;
+            _spriteBatch.Draw(_pixelTexture,
+                new Rectangle(qX - 4, qY - 4, totalW + 8, cellSize + 12),
+                Color.Black * panelAlpha);
+
+            for (int i = 0; i < qSlots; i++)
+            {
+                int slotX = qX + padding + i * (cellSize + padding);
+                Rectangle cellRect = new Rectangle(slotX, qY, cellSize, cellSize);
+
+                bool selected = (i == _quickbarSelectedSlot);
+
+                // Cell background
+                Color bg = selected
+                    ? new Color(60, 140, 255)          // bright blue highlight
+                    : new Color(35, 35, 45);
+                _spriteBatch.Draw(_pixelTexture, cellRect, bg);
+
+                // Border (2px inset)
+                Color borderCol = selected ? Color.White : new Color(80, 80, 100);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(slotX,                  qY,                  cellSize, 2),       borderCol);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(slotX,                  qY + cellSize - 2,   cellSize, 2),       borderCol);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(slotX,                  qY,                  2,         cellSize), borderCol);
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(slotX + cellSize - 2,   qY,                  2,         cellSize), borderCol);
+
+                // Item
+                string itemName = _player.Inventory.GetItem(i, 0);
+                if (itemName != null)
+                {
+                    string texKey = itemName.ToLower().Replace(" ", "_");
+                    Texture2D drawTex = null;
+                    Color drawTint = Color.White;
+
+                    if (itemName == "Ice Crystal" && _textures.ContainsKey("crystal"))       { drawTex = _textures["crystal"];       drawTint = Color.LightCyan; }
+                    else if (itemName == "Volcanic Ore" && _textures.ContainsKey("metal"))   { drawTex = _textures["metal"];         drawTint = Color.Red; }
+                    else if (itemName == "Radioactive Slag" && _textures.ContainsKey("metal")){ drawTex = _textures["metal"];        drawTint = Color.Green; }
+                    else if (itemName == "Lantern" && _textures.ContainsKey("crystal"))      { drawTex = _textures["crystal"];       drawTint = Color.Yellow; }
+                    else if (itemName == "Heat Shield" && _textures.ContainsKey("bionic_tech")){ drawTex = _textures["bionic_tech"]; drawTint = Color.Coral; }
+                    else if (itemName == "Rad Shield" && _textures.ContainsKey("bionic_tech")){ drawTex = _textures["bionic_tech"];  drawTint = Color.LimeGreen; }
+                    else if (itemName == "Pulse Laser" && _textures.ContainsKey("bionic_tech")){ drawTex = _textures["bionic_tech"]; drawTint = Color.LimeGreen; }
+                    else if (itemName == "Plasma Laser" && _textures.ContainsKey("bionic_tech")){ drawTex = _textures["bionic_tech"]; drawTint = Color.MediumPurple; }
+                    else if (itemName == "Reinforced Suit" && _textures.ContainsKey("astronaut")){ drawTex = _textures["astronaut"]; drawTint = Color.DarkOrange; }
+                    else if (itemName == "Radiation Suit" && _textures.ContainsKey("astronaut")){ drawTex = _textures["astronaut"];  drawTint = Color.GreenYellow; }
+                    else if (_textures.ContainsKey(texKey)) drawTex = _textures[texKey];
+
+                    if (drawTex != null)
+                        _spriteBatch.Draw(drawTex, new Rectangle(slotX + 7, qY + 7, cellSize - 14, cellSize - 14), drawTint);
+                    else
+                    {
+                        Color fc = itemName == "Rock" ? Color.Gray
+                                 : itemName == "Crystal" ? Color.Cyan
+                                 : itemName == "Corn" ? Color.Yellow
+                                 : Color.White;
+                        _spriteBatch.Draw(_pixelTexture, new Rectangle(slotX + 7, qY + 7, cellSize - 14, cellSize - 14), fc);
+                    }
+
+                    int cnt = _player.Inventory.GetItemCount(i, 0);
+                    if (cnt > 1)
+                    {
+                        string cText = $"x{cnt}";
+                        _spriteBatch.Draw(_pixelTexture, new Rectangle(slotX + 1, qY + cellSize - 11, cText.Length * 6 + 2, 10), Color.Black * 0.9f);
+                        PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, cText, new Vector2(slotX + 2, qY + cellSize - 10), Color.White, 1);
+                    }
+                }
+
+                // Slot number label
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"{i + 1}",
+                    new Vector2(slotX + 2, qY + 1), selected ? Color.White : new Color(120, 120, 160), 1);
+            }
+        }
+
+        // ───────────────────────── INVENTORY TAB ────────────────────────────
+        private void DrawInventoryTab(Vector2 invPos)
+        {
+            _player.Inventory.Draw(_spriteBatch, _pixelTexture, _textures, invPos);
+
+            // Info row above grid
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture,
+                $"BAG LVL: {_player.Inventory.UpgradeLevel}",
+                new Vector2(invPos.X, invPos.Y - 46), Color.Cyan, 1.8f);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture,
+                $"SUIT: {_player.EquippedSuit}",
+                new Vector2(invPos.X + 145, invPos.Y - 46), Color.Orange, 1.8f);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture,
+                $"POS [{(int)_player.Position.X}, {(int)_player.Position.Y}]",
+                new Vector2(invPos.X, invPos.Y - 26), Color.Yellow, 1.6f);
+
+            // Sort button
+            int invW = _player.Inventory.Cols * 45 + 5;
+            Rectangle sortBtn = new Rectangle((int)invPos.X + invW - 60, (int)invPos.Y - 22, 58, 18);
+            _spriteBatch.Draw(_pixelTexture, sortBtn, new Color(50, 50, 80));
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "SORT",
+                new Vector2(sortBtn.X + 7, sortBtn.Y + 3), Color.White, 1.8f);
+        }
+
+        // ───────────────────────── LOADOUT TAB ──────────────────────────────
+        private void DrawLoadoutTab(GameTime gameTime)
+        {
+            int winW = 860;
+            int winH = 560;
+            int winX = (GraphicsDevice.Viewport.Width - winW) / 2;
+            int winY = Math.Max(30, (GraphicsDevice.Viewport.Height - winH - 140) / 2);
+
+            // Window background
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(winX, winY, winW, winH), new Color(12, 14, 20) * 0.97f);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(winX, winY, winW, 3), new Color(20, 140, 100));
+
+            // Title
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "LOADOUT",
+                new Vector2(winX + 20, winY + 14), new Color(20, 200, 140), 3.5f);
+
+            // Close button [X]
+            Rectangle closeBtn = new Rectangle(winX + winW - 38, winY + 10, 26, 26);
+            _spriteBatch.Draw(_pixelTexture, closeBtn, Color.DarkRed);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "X",
+                new Vector2(closeBtn.X + 7, closeBtn.Y + 5), Color.White, 2f);
+
+            // ── Left column: astronaut silhouette + stat bars ──
+            int leftX = winX + 20;
+            int leftY = winY + 55;
+
+            // Astronaut silhouette (tinted by suit)
+            Color suitTint = _player.EquippedSuit == "Radiation Suit" ? Color.GreenYellow
+                           : _player.EquippedSuit == "Reinforced Suit" ? Color.DarkOrange
+                           : Color.SteelBlue;
+            if (_textures.ContainsKey("astronaut"))
+                _spriteBatch.Draw(_textures["astronaut"], new Rectangle(leftX + 30, leftY, 120, 160), suitTint * 0.9f);
+            else
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(leftX + 30, leftY, 120, 160), suitTint * 0.5f);
+
+            // Stat bars
+            int barY = leftY + 170;
+            int barW = 280;
+            DrawStatBar("HP",  _player.Health, 100f, Color.Green, leftX, barY);
+            DrawStatBar("O2",  _player.Oxygen, 100f, Color.CornflowerBlue, leftX, barY + 32);
+            DrawStatBar("HUNGER", _player.Hunger, 100f, Color.Orange, leftX, barY + 64);
+
+            // Equipped laser indicator
+            string laserText = $"LASER: {_player.EquippedLaser}  [{_player.LaserDamage:0} DMG]";
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, laserText,
+                new Vector2(leftX, barY + 108), _player.LaserColor, 1.5f);
+
+            // Protection row
+            string radText = $"RAD PROT: {_player.RadiationProtectionPercentage}%";
+            string heatText = $"HEAT PROT: {_player.HeatProtectionPercentage}%";
+            Color radColor = _player.RadiationProtectionPercentage > 0 ? Color.LimeGreen : Color.Red;
+            Color heatColor = _player.HeatProtectionPercentage > 0 ? Color.Orange : Color.Red;
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, radText,  new Vector2(leftX, barY + 132), radColor,  1.5f);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, heatText, new Vector2(leftX, barY + 150), heatColor, 1.5f);
+
+            // ── Right column: equipment cards ──
+            int rightX = winX + 335;
+            int rightY = winY + 60;
+            int rightW = winW - 360;
+            int cardH = 84;
+            int cardGap = 10;
+
+            // Suit card
+            DrawEquipCard(rightX, rightY, rightW, cardH,
+                "SUIT", _player.EquippedSuit,
+                $"Rad: {_player.RadiationProtectionPercentage}%   Heat: {_player.HeatProtectionPercentage}%",
+                _player.EquippedSuit != "Standard EVA Suit", "Suit",
+                new Color(60, 60, 100), Color.SteelBlue);
+
+            // Laser card
+            DrawEquipCard(rightX, rightY + cardH + cardGap, rightW, cardH,
+                "LASER", _player.EquippedLaser,
+                $"Damage: {_player.LaserDamage:0}  Color: {(_player.LaserColor == Color.Cyan ? "CYAN" : _player.LaserColor == Color.LimeGreen ? "GREEN" : "PLASMA")}",
+                _player.EquippedLaser != "Basic Mining Laser", "Laser",
+                new Color(40, 60, 80), _player.LaserColor);
+
+            // Lantern card
+            DrawEquipCard(rightX, rightY + (cardH + cardGap) * 2, rightW, cardH,
+                "LANTERN", _player.EquippedLantern ?? "(none)",
+                _player.EquippedLantern != null ? "Cave light radius: 300px" : "No lantern equipped",
+                _player.EquippedLantern != null, "Lantern",
+                new Color(60, 55, 20), Color.Yellow);
+
+            // Accessory card
+            DrawEquipCard(rightX, rightY + (cardH + cardGap) * 3, rightW, cardH,
+                "ACCESSORY", _player.EquippedAccessory ?? "(none)",
+                _player.EquippedAccessory == "Heat Shield" ? "Volcanic biomes safe"
+                : _player.EquippedAccessory == "Rad Shield" ? "Radiation biomes safe"
+                : "No accessory equipped",
+                _player.EquippedAccessory != null, "Accessory",
+                new Color(50, 60, 50), Color.LimeGreen);
+
+            // Key hints
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture,
+                "RIGHT-CLICK item in inventory to [EQUIP]",
+                new Vector2(winX + 20, winY + winH - 22), new Color(100, 120, 140), 1.5f);
+        }
+
+        private void DrawStatBar(string label, float value, float max, Color barColor, int x, int y)
+        {
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(x, y, 60, 12), new Color(20, 20, 30));
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, label, new Vector2(x, y), new Color(160, 160, 180), 1.5f);
+            int bX = x + 70;
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(bX, y, 200, 12), new Color(30, 30, 40));
+            int filled = (int)(Math.Clamp(value / max, 0, 1) * 200);
+            if (filled > 0)
+                _spriteBatch.Draw(_pixelTexture, new Rectangle(bX, y, filled, 12), barColor);
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, $"{(int)value}",
+                new Vector2(bX + 208, y), Color.White, 1.5f);
+        }
+
+        private void DrawEquipCard(int x, int y, int w, int h,
+            string slotLabel, string itemName, string statLine,
+            bool canUnequip, string slotType, Color bgColor, Color accentColor)
+        {
+            // Card bg
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(x, y, w, h), bgColor);
+            _spriteBatch.Draw(_pixelTexture, new Rectangle(x, y, w, 2), accentColor);
+
+            // Slot label
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, slotLabel,
+                new Vector2(x + 8, y + 8), new Color(160, 160, 180), 1.6f);
+
+            // Item name
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, itemName,
+                new Vector2(x + 8, y + 26), Color.White, 2f);
+
+            // Stat line
+            PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, statLine,
+                new Vector2(x + 8, y + 50), new Color(160, 200, 160), 1.4f);
+
+            // Unequip button
+            if (canUnequip)
+            {
+                Rectangle unequipBtn = new Rectangle(x + w - 85, y + h - 32, 78, 24);
+                _spriteBatch.Draw(_pixelTexture, unequipBtn, new Color(120, 30, 30));
+                PixelTextRenderer.DrawText(_spriteBatch, _pixelTexture, "UNEQUIP",
+                    new Vector2(unequipBtn.X + 5, unequipBtn.Y + 5), Color.White, 1.5f);
+            }
+        }
+
         private void SaveGame()
         {
             SaveData data = new SaveData();
@@ -3617,9 +4197,10 @@ namespace AntigravityMoon
                 string jsonString = File.ReadAllText(SaveFileName);
                 SaveData data = JsonSerializer.Deserialize<SaveData>(jsonString);
                 
-                // Clear existing
                 // Clear existing entities
                 _entityManager.Clear();
+                _aliens.Clear();
+                _alienSpawnTimer = 0f;
                 
                 // Update existing player instead of creating new one (preserves any references)
                 _player.Position = new Vector2(data.PlayerX, data.PlayerY);
