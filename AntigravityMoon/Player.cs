@@ -48,7 +48,9 @@ namespace AntigravityMoon
         public string EquippedLaser { get; set; } = "Basic Mining Laser";
         public string EquippedLantern { get; set; } = null;
         public string EquippedAccessory { get; set; } = null;
+        public string EquippedBag { get; set; } = null;
 
+        public bool HasSpaceBag => !string.IsNullOrEmpty(EquippedBag) || Inventory.UpgradeLevel > 0;
         public bool HasLantern => EquippedLantern != null || Inventory.CountItem("Lantern") > 0;
         public bool HasHeatShield => EquippedAccessory == "Heat Shield" || Inventory.CountItem("Heat Shield") > 0 || (EquippedSuit != null && (EquippedSuit.Contains("Reinforced") || EquippedSuit.Contains("Radiation")));
         public bool HasRadShield => EquippedAccessory == "Rad Shield" || EquippedSuit == "Radiation Suit" || (SuitLevel >= 3) || Inventory.CountItem("Rad Shield") > 0;
@@ -686,7 +688,8 @@ namespace AntigravityMoon
             return item == "Lantern" ||
                    item == "Basic Mining Laser" || item == "Pulse Laser" || item == "Plasma Laser" ||
                    item == "Standard EVA Suit" || item == "Reinforced Suit" || item == "Radiation Suit" ||
-                   item == "Heat Shield" || item == "Rad Shield";
+                   item == "Heat Shield" || item == "Rad Shield" ||
+                   item == "Space Bag" || item == "Advanced Space Bag";
         }
 
         public string GetEquipSlotForItem(string item)
@@ -695,6 +698,7 @@ namespace AntigravityMoon
             if (item == "Basic Mining Laser" || item == "Pulse Laser" || item == "Plasma Laser") return "Laser";
             if (item == "Standard EVA Suit" || item == "Reinforced Suit" || item == "Radiation Suit") return "Suit";
             if (item == "Heat Shield" || item == "Rad Shield") return "Accessory";
+            if (item == "Space Bag" || item == "Advanced Space Bag") return "Bag";
             return null;
         }
 
@@ -726,6 +730,18 @@ namespace AntigravityMoon
                 case "Accessory":
                     previousItem = EquippedAccessory;
                     EquippedAccessory = item;
+                    break;
+                case "Bag":
+                    previousItem = EquippedBag;
+                    EquippedBag = item;
+                    if (item == "Advanced Space Bag")
+                    {
+                        Inventory.SetUpgradeLevel(2);
+                    }
+                    else
+                    {
+                        Inventory.SetUpgradeLevel(1);
+                    }
                     break;
                 default:
                     return false;
@@ -793,6 +809,18 @@ namespace AntigravityMoon
                         Inventory.AddItem(unequipped);
                         EquippedSuit = "Standard EVA Suit";
                         SuitLevel = 1;
+                        return true;
+                    }
+                    break;
+                case "Bag":
+                    if (EquippedBag != null)
+                    {
+                        if (!Inventory.IsStorageEmpty()) return false;
+                        unequipped = EquippedBag;
+                        if (!Inventory.CanAddItem(unequipped)) return false;
+                        Inventory.AddItem(unequipped);
+                        EquippedBag = null;
+                        Inventory.SetUpgradeLevel(0);
                         return true;
                     }
                     break;

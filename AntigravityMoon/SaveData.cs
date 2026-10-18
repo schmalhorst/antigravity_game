@@ -19,6 +19,7 @@ namespace AntigravityMoon
         public string EquippedLaser { get; set; }
         public string EquippedSuit { get; set; }
         public string EquippedAccessory { get; set; }
+        public string EquippedBag { get; set; }
         public List<InventoryItemData> Inventory { get; set; } = new List<InventoryItemData>();
         public List<StructureData> Structures { get; set; } = new List<StructureData>();
         public List<ExploredChunkData> Explored { get; set; } = new List<ExploredChunkData>();

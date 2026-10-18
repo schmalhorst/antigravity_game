@@ -8,7 +8,7 @@ namespace AntigravityMoon
     public class Inventory
     {
         public int Rows { get; private set; } = 1;
-        public int Cols { get; private set; } = 4;
+        public int Cols { get; private set; } = 5;
         public int MaxStack { get; private set; } = 10;
         public int UpgradeLevel { get; private set; } = 0;
 
@@ -37,25 +37,81 @@ namespace AntigravityMoon
             return true;
         }
 
-        public bool Upgrade()
+        public bool IsStorageEmpty()
         {
-            if (UpgradeLevel == 0)
+            for (int y = 1; y < Rows; y++)
             {
-                // Upgrade to 8 cols, 1 row
-                UpgradeLevel++;
-                Resize(8, 1);
+                for (int x = 0; x < Cols; x++)
+                {
+                    if (_items[x, y].ItemName != null) return false;
+                }
+            }
+            return true;
+        }
+
+        public bool SetUpgradeLevel(int level)
+        {
+            if (level == 0)
+            {
+                UpgradeLevel = 0;
+                Resize(5, 1);
+                MaxStack = 10;
+                return true;
+            }
+            else if (level == 1)
+            {
+                UpgradeLevel = 1;
+                Resize(5, 3); // Row 0: Quickbar (5), Rows 1-2: Space Bag (10)
                 MaxStack = 50;
                 return true;
             }
-            else if (UpgradeLevel == 1)
+            else if (level == 2)
             {
-                // Upgrade to 8 cols, 2 rows
-                UpgradeLevel++;
-                Resize(8, 2);
+                UpgradeLevel = 2;
+                Resize(5, 5); // Row 0: Quickbar (5), Rows 1-4: Advanced Space Bag (20)
                 MaxStack = 99;
                 return true;
             }
             return false;
+        }
+
+        public bool Upgrade()
+        {
+            if (UpgradeLevel < 2)
+            {
+                return SetUpgradeLevel(UpgradeLevel + 1);
+            }
+            return false;
+        }
+
+        public void SwapSlots(int x1, int y1, int x2, int y2)
+        {
+            if (x1 < 0 || x1 >= Cols || y1 < 0 || y1 >= Rows) return;
+            if (x2 < 0 || x2 >= Cols || y2 < 0 || y2 >= Rows) return;
+            if (x1 == x2 && y1 == y2) return;
+
+            // If same item, try to stack into (x2, y2)
+            if (_items[x1, y1].ItemName != null && _items[x1, y1].ItemName == _items[x2, y2].ItemName)
+            {
+                int space = MaxStack - _items[x2, y2].Count;
+                if (space > 0)
+                {
+                    int toMove = Math.Min(_items[x1, y1].Count, space);
+                    _items[x2, y2].Count += toMove;
+                    _items[x1, y1].Count -= toMove;
+                    if (_items[x1, y1].Count <= 0)
+                    {
+                        _items[x1, y1].ItemName = null;
+                        _items[x1, y1].Count = 0;
+                    }
+                    return;
+                }
+            }
+
+            // Otherwise swap
+            var temp = _items[x1, y1];
+            _items[x1, y1] = _items[x2, y2];
+            _items[x2, y2] = temp;
         }
 
         private void Resize(int newCols, int newRows)
@@ -108,6 +164,40 @@ namespace AntigravityMoon
                 }
             }
             return false; // Full
+        }
+
+        public bool AddItem(string itemName, int count)
+        {
+            int remaining = count;
+            // 1. Try to stack
+            for (int y = 0; y < Rows && remaining > 0; y++)
+            {
+                for (int x = 0; x < Cols && remaining > 0; x++)
+                {
+                    if (_items[x, y].ItemName == itemName && _items[x, y].Count < MaxStack)
+                    {
+                        int add = Math.Min(remaining, MaxStack - _items[x, y].Count);
+                        _items[x, y].Count += add;
+                        remaining -= add;
+                    }
+                }
+            }
+
+            // 2. Find empty slot
+            for (int y = 0; y < Rows && remaining > 0; y++)
+            {
+                for (int x = 0; x < Cols && remaining > 0; x++)
+                {
+                    if (_items[x, y].ItemName == null)
+                    {
+                        int add = Math.Min(remaining, MaxStack);
+                        _items[x, y].ItemName = itemName;
+                        _items[x, y].Count = add;
+                        remaining -= add;
+                    }
+                }
+            }
+            return remaining == 0;
         }
 
         public bool CanAddItem(string itemName)
@@ -400,6 +490,11 @@ namespace AntigravityMoon
                             drawTex = itemTextures["astronaut"];
                             drawTint = Color.GreenYellow;
                         }
+                        else if ((itemName == "Space Bag" || itemName == "Advanced Space Bag") && itemTextures.ContainsKey("backpack"))
+                        {
+                            drawTex = itemTextures["backpack"];
+                            drawTint = itemName == "Advanced Space Bag" ? Color.Gold : Color.White;
+                        }
                         else if (itemTextures != null && itemTextures.ContainsKey(textureKey))
                         {
                             drawTex = itemTextures[textureKey];
@@ -426,6 +521,8 @@ namespace AntigravityMoon
                             else if (itemName == "Plasma Laser") color = Color.MediumPurple;
                             else if (itemName == "Reinforced Suit") color = Color.DarkOrange;
                             else if (itemName == "Radiation Suit") color = Color.GreenYellow;
+                            else if (itemName == "Space Bag") color = Color.Tan;
+                            else if (itemName == "Advanced Space Bag") color = Color.Gold;
                             
                             spriteBatch.Draw(pixelTexture, new Rectangle(rect.X + 5, rect.Y + 5, cellSize - 10, cellSize - 10), color);
                         }
